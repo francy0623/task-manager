@@ -220,6 +220,16 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
       <input type="file" id="imp-file" style="display:none" accept=".json" onchange="importJSON(event)">
     </div>
   </div>
+
+  <div class="card mb12">
+    <h3>🔑 Gemini API Key</h3>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:10px">Key 只存在此裝置，不會上傳或寫入程式碼。每台裝置需各自設定一次。</p>
+    <div class="flex gap8">
+      <input type="password" id="api-key-input" placeholder="AIzaSy…" style="flex:1">
+      <button class="btn btn-primary btn-sm" onclick="saveApiKey()">儲存</button>
+    </div>
+    <div id="api-key-status" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
+  </div>
   <div class="card mb12">
     <h3>🎯 目標管理</h3>
     <div class="form-row mt8">
@@ -556,7 +566,24 @@ function copyToday(){
 let chat={goal:'',msgs:[],answers:[],done:false};
 const MAX_Q=4;
 
-function getKey(){return'AIzaSyAhJWdUI-5C4DkHbZMWUQeChW87A6mR0Ws';}
+function getKey(){return localStorage.getItem('pm_gemini_key')||'';}
+
+function saveApiKey(){
+  const v=document.getElementById('api-key-input').value.trim();
+  if(!v){toast('請輸入 API Key');return;}
+  localStorage.setItem('pm_gemini_key',v);
+  document.getElementById('api-key-input').value='';
+  updateApiKeyStatus();
+  toast('✅ API Key 已儲存');
+}
+
+function updateApiKeyStatus(){
+  const el=document.getElementById('api-key-status');
+  if(!el)return;
+  const k=getKey();
+  el.textContent=k?'✅ 已設定（'+k.slice(0,8)+'…）':'⚠️ 尚未設定';
+  el.style.color=k?'var(--success)':'var(--warning)';
+}
 
 async function callGemini(prompt,sysInst){
   const key=getKey();
@@ -755,7 +782,7 @@ function delColl(i){
 }
 
 // ─── PAGE 4: Settings ──────────────────────────────────────
-function renderSettings(){renderGoals();renderHabits();}
+function renderSettings(){updateApiKeyStatus();renderGoals();renderHabits();}
 
 function renderGoals(){
   const goals=cget('pm_goals',[]);
