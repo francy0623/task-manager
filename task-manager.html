@@ -107,6 +107,7 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
   <button onclick="showPage('capture')">⚡ 快速收集</button>
   <button onclick="showPage('settings')">⚙️ 設定</button>
   <button onclick="showPage('review')">📝 週回顧</button>
+  <button onclick="showPage('assistant')">💬 助理</button>
   <span id="sync-dot"></span>
 </nav>
 
@@ -283,6 +284,19 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
   </div>
 </div>
 
+<!-- ===== PAGE 6 ===== -->
+<div id="page-assistant" class="page">
+  <h2>💬 助理</h2>
+  <p style="font-size:13px;color:var(--text2);margin-bottom:14px">直接說你的待辦、習慣、目標或收藏，我幫你自動整理。</p>
+  <div class="chat-box">
+    <div class="chat-msgs" id="ast-msgs"></div>
+    <div class="chat-foot">
+      <input type="text" id="ast-in" placeholder="例如：明天要去看牙醫、每天早上要跑步…" onkeypress="if(event.key==='Enter')sendAssistant()">
+      <button class="btn btn-primary btn-sm" id="ast-send" onclick="sendAssistant()">送出</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── Firebase + Storage ────────────────────────────────────
 const firebaseConfig={
@@ -314,7 +328,7 @@ function setSyncDot(state){
   if(state==='ok'){clearTimeout(el._t);el._t=setTimeout(()=>setSyncDot('idle'),3000);}
 }
 
-const SYNC_KEYS=['pm_habits','pm_goals','pm_colls','pm_today','pm_review','pm_streaks','pm_history'];
+const SYNC_KEYS=['pm_habits','pm_goals','pm_colls','pm_today','pm_review','pm_streaks','pm_history','pm_scheduled'];
 
 async function initDB(){
   setSyncDot('syncing');
@@ -336,7 +350,7 @@ async function initDB(){
       cache[k]=fresh;
       const pg=document.querySelector('.page.active');if(!pg)return;
       const id=pg.id.replace('page-','');
-      if(id==='today'&&(k==='pm_today'||k==='pm_habits'||k==='pm_streaks'||k==='pm_history'))renderToday();
+      if(id==='today'&&(k==='pm_today'||k==='pm_habits'||k==='pm_streaks'||k==='pm_history'||k==='pm_scheduled'))renderToday();
       else if(id==='capture'&&k==='pm_colls')renderColl();
       else if(id==='settings'&&(k==='pm_habits'||k==='pm_goals'))renderSettings();
       else if(id==='review'&&k==='pm_review')loadReviewAnswers();
@@ -345,7 +359,7 @@ async function initDB(){
 }
 
 // ─── Navigation ────────────────────────────────────────────
-const PAGES=['today','goals','capture','settings','review'];
+const PAGES=['today','goals','capture','settings','review','assistant'];
 function showPage(n){
   PAGES.forEach(p=>{
     document.getElementById('page-'+p).classList.toggle('active',p===n);
@@ -355,6 +369,7 @@ function showPage(n){
   if(n==='capture')renderColl();
   if(n==='settings')renderSettings();
   if(n==='review')renderReviewPage();
+  if(n==='assistant')initAssistant();
 }
 
 // ─── Toast ─────────────────────────────────────────────────
@@ -469,6 +484,14 @@ function buildTasks(date){
   const habits=cget('pm_habits',[]);
   const tasks=habits.filter(h=>habitToday(h,date))
     .map(h=>({id:h.id,name:h.name,time:h.time||'',done:false,manual:false}));
+  // 合併今日排程任務
+  const ds=localDateStr(date);
+  const sched=cget('pm_scheduled',{});
+  if(sched[ds]&&sched[ds].length){
+    sched[ds].forEach(t=>tasks.push({id:t.id,name:t.name,time:'',done:false,manual:true}));
+    delete sched[ds];
+    cset('pm_scheduled',sched);
+  }
   tasks.sort((a,b)=>{
     if(!a.time&&!b.time)return 0;
     if(!a.time)return 1;if(!b.time)return-1;
@@ -1050,6 +1073,119 @@ function clearReview(){
   ['rq1','rq2','rq3','rq4'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('review-out').style.display='none';
   cset('pm_review',{});
+}
+
+// ─── PAGE 6: Assistant ─────────────────────────────────────
+let astHistory=[];
+
+function initAssistant(){
+  const box=document.getElementById('ast-msgs');
+  if(box&&box.children.length===0){
+    addAstMsg('ai','嗨！我是你的任務助理 👋\n\n你可以直接告訴我任何事，例如：\n・「明天要去看牙醫」\n・「每天晚上10點要讀書」\n・「想看《奧本海默》」\n・「三個月內要存到10萬」\n\n我會自動幫你整理到對的地方。');
+  }
+}
+
+function addAstMsg(role,text){
+  const el=document.createElement('div');
+  el.className='msg msg-'+role;
+  el.style.whiteSpace='pre-wrap';
+  el.textContent=text;
+  const box=document.getElementById('ast-msgs');
+  box.appendChild(el);box.scrollTop=box.scrollHeight;
+  return el;
+}
+
+async function sendAssistant(){
+  const inp=document.getElementById('ast-in');
+  const text=inp.value.trim();if(!text)return;
+  if(!getKey()){toast('請先到「設定」頁面輸入 Gemini API Key');return;}
+  inp.value='';
+  addAstMsg('user',text);
+  astHistory.push({role:'user',text});
+
+  const btn=document.getElementById('ast-send');btn.disabled=true;
+  const loading=addAstMsg('ai','');loading.innerHTML='<div class="spin"></div>';
+
+  try{
+    const result=await callAssistant(text);
+    loading.style.whiteSpace='pre-wrap';
+    loading.innerHTML='';loading.textContent=result.reply;
+    astHistory.push({role:'ai',text:result.reply});
+    if(result.action&&result.action.type!=='none')executeAction(result.action);
+  }catch(e){
+    loading.textContent='⚠️ '+e.message;
+  }finally{btn.disabled=false;}
+}
+
+async function callAssistant(userText){
+  const today=todayStr();
+  const sysPrompt=`你是繁體中文任務管理助理。今天日期：${today}（${['日','一','二','三','四','五','六'][new Date().getDay()]}）。
+
+請只回傳純 JSON，格式：
+{"reply":"繁體中文回覆給使用者","action":{"type":"...",...}}
+
+action type 規則：
+- add_today → {"type":"add_today","name":"..."} （今天一次性任務）
+- add_scheduled → {"type":"add_scheduled","name":"...","date":"YYYY-MM-DD"} （指定未來日期）
+- add_habit → {"type":"add_habit","name":"...","frequency":"daily|weekday|weekend|weekly|3x","time":"HH:MM或空字串"} （重複習慣）
+- add_goal → {"type":"add_goal","name":"...","dueDate":"YYYY-MM-DD或空字串"} （長期目標）
+- add_collection → {"type":"add_collection","category":"book|movie|shopping|other","title":"..."} （收藏）
+- none → {"type":"none"} （需要追問時用此，reply 裡問使用者）
+
+日期計算：明天=+1天、後天=+2天、下週X要計算正確日期。
+不確定是一次任務還是習慣時，用 none 詢問。
+只回傳 JSON，不加任何 markdown。`;
+
+  const ctx=astHistory.slice(-8).map(m=>`${m.role==='user'?'使用者':'助理'}：${m.text}`).join('\n');
+  const prompt=ctx?`${ctx}\n使用者：${userText}`:userText;
+  const raw=await callGemini(prompt,sysPrompt);
+  const clean=raw.replace(/^```json\s*/,'').replace(/^```\s*/,'').replace(/\s*```$/,'').trim();
+  try{return JSON.parse(clean);}
+  catch{return{reply:raw,action:{type:'none'}};}
+}
+
+function executeAction(action){
+  const ts=todayStr();
+  switch(action.type){
+    case'add_today':{
+      const td=cget('pm_today',null);
+      if(td&&td.date===ts){
+        td.tasks.push({id:Date.now(),name:action.name,time:'',done:false,manual:true});
+        cset('pm_today',td);
+        const pg=document.querySelector('.page.active');
+        if(pg&&pg.id==='page-today')renderToday();
+      }
+      break;
+    }
+    case'add_scheduled':{
+      const sched=cget('pm_scheduled',{});
+      if(!sched[action.date])sched[action.date]=[];
+      sched[action.date].push({id:Date.now(),name:action.name,done:false});
+      cset('pm_scheduled',sched);
+      break;
+    }
+    case'add_habit':{
+      const habits=cget('pm_habits',[]);
+      habits.push({id:Date.now(),name:action.name,frequency:action.frequency||'daily',time:action.time||'',createdAt:new Date().toISOString()});
+      cset('pm_habits',habits);
+      refreshTodayTasks();
+      break;
+    }
+    case'add_goal':{
+      const goals=cget('pm_goals',[]);
+      goals.push({id:Date.now(),name:action.name,dueDate:action.dueDate||'',createdAt:new Date().toISOString()});
+      cset('pm_goals',goals);
+      break;
+    }
+    case'add_collection':{
+      const colls=cget('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+      const cat=action.category||'other';
+      if(!colls[cat])colls[cat]=[];
+      colls[cat].push({id:Date.now(),title:action.title,done:false});
+      cset('pm_colls',colls);
+      break;
+    }
+  }
 }
 
 // ─── Util ──────────────────────────────────────────────────
