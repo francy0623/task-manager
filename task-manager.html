@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>個人任務管理</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+  --text:#e6edf3;--text2:#8b949e;--accent:#58a6ff;--accent-dark:#1f6feb;
+  --success:#3fb950;--warning:#d29922;--danger:#f85149;--r:8px;
+}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;min-height:100vh}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 8px;display:flex;position:sticky;top:0;z-index:100;overflow-x:auto}
+nav button{background:none;border:none;color:var(--text2);padding:13px 14px;cursor:pointer;font-size:13px;white-space:nowrap;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;flex-shrink:0}
+nav button:hover{color:var(--text)}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+.page{display:none;max-width:800px;margin:0 auto;padding:20px 16px}
+.page.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:var(--r);border:none;cursor:pointer;font-size:13px;transition:opacity .2s,background .2s;font-family:inherit}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#0d1117;font-weight:600}
+.btn-primary:hover:not(:disabled){opacity:.85}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover:not(:disabled){background:var(--border)}
+.btn-danger{background:rgba(248,81,73,.12);color:var(--danger);border:1px solid rgba(248,81,73,.25)}
+.btn-danger:hover:not(:disabled){background:rgba(248,81,73,.22)}
+.btn-sm{padding:5px 10px;font-size:12px}
+input[type=text],input[type=date],input[type=time],input[type=password],select,textarea{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  border-radius:var(--r);padding:8px 12px;font-size:13px;width:100%;transition:border-color .2s;font-family:inherit}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:80px}
+label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
+h2{font-size:18px;font-weight:600;margin-bottom:16px}
+h3{font-size:14px;font-weight:600;margin-bottom:8px}
+.task-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.task-item:last-child{border-bottom:none}
+.task-item input[type=checkbox]{width:17px;height:17px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.task-item.done .task-name{text-decoration:line-through;color:var(--text2)}
+.task-name{flex:1;font-size:14px}
+.task-time{font-size:11px;color:var(--text2);flex-shrink:0}
+.banner{background:rgba(210,153,34,.13);border:1px solid rgba(210,153,34,.35);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.chat-box{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.chat-msgs{min-height:180px;max-height:380px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.msg{max-width:82%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.55;word-break:break-word}
+.msg-ai{background:var(--surface2);border:1px solid var(--border);align-self:flex-start;border-radius:4px 12px 12px 12px}
+.msg-user{background:var(--accent-dark);color:#fff;align-self:flex-end;border-radius:12px 4px 12px 12px}
+.chat-foot{padding:10px;background:var(--surface);border-top:1px solid var(--border);display:flex;gap:8px}
+.chat-foot input{flex:1}
+.out-block{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px}
+.out-head{display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border)}
+.out-head h3{margin:0}
+.out-body{padding:14px;font-family:'Courier New',monospace;font-size:12px;white-space:pre-wrap;color:var(--text2);max-height:280px;overflow-y:auto;line-height:1.6}
+.tab-bar{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.tab-btn{background:none;border:none;color:var(--text2);padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:inherit}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.coll-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)}
+.coll-item:last-child{border-bottom:none}
+.coll-item.done .coll-title{text-decoration:line-through;color:var(--text2)}
+.coll-title{flex:1;font-size:13px}
+.form-row{display:flex;gap:8px;margin-bottom:10px;align-items:flex-end;flex-wrap:wrap}
+.form-group{margin-bottom:10px}
+.fg-1{flex:1;min-width:140px}
+.list-row{display:flex;align-items:center;gap:8px;padding:9px 12px;background:var(--surface2);border-radius:var(--r);margin-bottom:6px;border:1px solid var(--border)}
+.list-info{flex:1;min-width:0}
+.list-name{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list-meta{font-size:11px;color:var(--text2)}
+.review-q{margin-bottom:14px}
+.review-q label{font-size:13px;color:var(--text);margin-bottom:6px}
+.prog-bar{background:var(--surface2);border-radius:4px;height:5px;margin-bottom:14px;overflow:hidden}
+.prog-fill{background:var(--success);height:100%;transition:width .4s}
+#toast{position:fixed;bottom:20px;right:20px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:10px 18px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:280px}
+#toast.show{opacity:1}
+.spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:sp .6s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}.jb{justify-content:space-between}.ac{align-items:center}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mt8{margin-top:8px}.mt12{margin-top:12px}
+@media(max-width:540px){.form-row{flex-direction:column}.form-row>*{min-width:100%!important}}
+</style>
+</head>
+<body>
+
+<nav>
+  <button class="active" onclick="showPage('today')">📋 今日清單</button>
+  <button onclick="showPage('goals')">🎯 目標拆解</button>
+  <button onclick="showPage('capture')">⚡ 快速收集</button>
+  <button onclick="showPage('settings')">⚙️ 設定</button>
+  <button onclick="showPage('review')">📝 週回顧</button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- ===== PAGE 1 ===== -->
+<div id="page-today" class="page active">
+  <div id="banner-weekly" class="banner" style="display:none">
+    <span style="font-size:20px">🔔</span>
+    <div style="flex:1">
+      <strong>今天是週日！</strong> 記得完成本週回顧，整理收穫與方向。
+      <button class="btn btn-sm btn-secondary" style="margin-left:8px" onclick="showPage('review')">前往週回顧</button>
+    </div>
+  </div>
+
+  <div class="flex jb ac mb16">
+    <div>
+      <div style="font-size:20px;font-weight:700" id="hd-date">—</div>
+      <div style="font-size:13px;color:var(--text2)" id="hd-day">—</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="copyToday()">📋 複製 Markdown</button>
+  </div>
+
+  <div class="card" id="today-card">
+    <p style="color:var(--text2);text-align:center;padding:20px">載入中…</p>
+  </div>
+</div>
+
+<!-- ===== PAGE 2 ===== -->
+<div id="page-goals" class="page">
+  <h2>🎯 目標拆解</h2>
+
+  <div class="card mb12">
+    <label>Gemini API Key（儲存於本機，不上傳）</label>
+    <div class="flex gap8 mt8">
+      <input type="password" id="key-input" placeholder="AIza…" style="flex:1">
+      <button class="btn btn-primary btn-sm" onclick="saveKey()">儲存</button>
+    </div>
+  </div>
+
+  <div class="card mb12" id="goal-form">
+    <div class="form-group">
+      <label>你想達成的目標</label>
+      <input type="text" id="goal-txt" placeholder="例如：學會彈吉他、每天跑步、完成副業第一筆收入…">
+    </div>
+    <button class="btn btn-primary" onclick="startGoal()">開始拆解 ✨</button>
+  </div>
+
+  <div id="goal-chat" style="display:none">
+    <div class="card mb12 flex jb ac">
+      <span id="goal-label" style="font-size:13px;color:var(--text2)"></span>
+      <button class="btn btn-secondary btn-sm" onclick="resetGoal()">重新開始</button>
+    </div>
+    <div class="chat-box mb12">
+      <div class="chat-msgs" id="chat-msgs"></div>
+      <div class="chat-foot" id="chat-foot">
+        <input type="text" id="chat-in" placeholder="輸入回答…" onkeypress="if(event.key==='Enter')sendMsg()">
+        <button class="btn btn-primary btn-sm" id="chat-send" onclick="sendMsg()">送出</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="goal-out" style="display:none">
+    <h2 style="margin-top:8px">📄 Obsidian 頁面內容</h2>
+    <div class="out-block">
+      <div class="out-head"><h3>主頁面（里程碑概覽）</h3><button class="btn btn-sm btn-secondary" onclick="cp('out-1')">📋 複製</button></div>
+      <div class="out-body" id="out-1"></div>
+    </div>
+    <div class="out-block">
+      <div class="out-head"><h3>任務頁面（里程碑＋任務清單）</h3><button class="btn btn-sm btn-secondary" onclick="cp('out-2')">📋 複製</button></div>
+      <div class="out-body" id="out-2"></div>
+    </div>
+    <div class="out-block">
+      <div class="out-head"><h3>習慣頁面（每日 Routine）</h3><button class="btn btn-sm btn-secondary" onclick="cp('out-3')">📋 複製</button></div>
+      <div class="out-body" id="out-3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PAGE 3 ===== -->
+<div id="page-capture" class="page">
+  <h2>⚡ 快速收集</h2>
+
+  <div class="card mb12">
+    <label>輸入任何想法（書、電影、目標、習慣、購物…）</label>
+    <div class="flex gap8 mt8">
+      <input type="text" id="cap-in" placeholder="想讀的書、想學的技能、想買的東西…" style="flex:1" onkeypress="if(event.key==='Enter')doCapture()">
+      <button class="btn btn-primary btn-sm" id="cap-btn" onclick="doCapture()">分類 ✨</button>
+    </div>
+
+    <div id="cap-result" style="display:none" class="mt12">
+      <div class="flex ac gap8 mb8">
+        <span style="font-size:13px;flex-shrink:0">分類：</span>
+        <select id="cap-cat" style="width:auto" onchange="onCatChange()">
+          <option value="book">📚 書單</option>
+          <option value="movie">🎬 電影</option>
+          <option value="shopping">🛒 購物</option>
+          <option value="goal">🎯 目標</option>
+          <option value="habit">✅ 習慣</option>
+          <option value="other">📌 其他</option>
+        </select>
+      </div>
+      <div class="flex gap8">
+        <button class="btn btn-primary btn-sm" onclick="confirmCap()">✓ 加入清單</button>
+        <button class="btn btn-secondary btn-sm" id="cap-tosettings" style="display:none" onclick="capToSettings()">⚙️ 加入設定</button>
+        <button class="btn btn-secondary btn-sm" onclick="cancelCap()">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('book')">📚 書單</button>
+    <button class="tab-btn" onclick="switchTab('movie')">🎬 電影</button>
+    <button class="tab-btn" onclick="switchTab('shopping')">🛒 購物</button>
+    <button class="tab-btn" onclick="switchTab('other')">📌 其他</button>
+  </div>
+  <div class="card" id="coll-card"></div>
+</div>
+
+<!-- ===== PAGE 4 ===== -->
+<div id="page-settings" class="page">
+  <div class="flex jb ac mb16">
+    <h2 style="margin:0">⚙️ 設定</h2>
+    <div class="flex gap8">
+      <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📤 匯出</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('imp-file').click()">📥 匯入</button>
+      <input type="file" id="imp-file" style="display:none" accept=".json" onchange="importJSON(event)">
+    </div>
+  </div>
+
+  <div class="card mb12">
+    <h3>🎯 目標管理</h3>
+    <div class="form-row mt8">
+      <div class="form-group fg-1"><label>目標名稱</label><input type="text" id="g-name" placeholder="學會彈吉他"></div>
+      <div class="form-group" style="min-width:150px"><label>預計完成日期</label><input type="date" id="g-date"></div>
+      <div style="padding-bottom:10px"><button class="btn btn-primary btn-sm" onclick="addGoal()">新增</button></div>
+    </div>
+    <div id="goals-list"></div>
+  </div>
+
+  <div class="card">
+    <h3>✅ 習慣管理</h3>
+    <div class="form-row mt8">
+      <div class="form-group fg-1"><label>習慣名稱</label><input type="text" id="h-name" placeholder="冥想10分鐘"></div>
+      <div class="form-group" style="min-width:110px"><label>頻率</label>
+        <select id="h-freq">
+          <option value="daily">每天</option>
+          <option value="weekday">週一到五</option>
+          <option value="weekend">週末</option>
+          <option value="weekly">每週一次</option>
+          <option value="3x">每週三次</option>
+        </select>
+      </div>
+      <div class="form-group" style="min-width:110px"><label>建議時間</label><input type="time" id="h-time"></div>
+      <div style="padding-bottom:10px"><button class="btn btn-primary btn-sm" onclick="addHabit()">新增</button></div>
+    </div>
+    <div id="habits-list"></div>
+  </div>
+</div>
+
+<!-- ===== PAGE 5 ===== -->
+<div id="page-review" class="page">
+  <h2>📝 週回顧</h2>
+  <div class="card mb12">
+    <div style="font-size:13px;color:var(--text2)" id="week-label">—</div>
+  </div>
+
+  <div class="review-q"><label>1. 這週哪些習慣有持續做到？哪些需要改進？</label>
+    <textarea id="rq1" placeholder="例如：跑步做到3次，冥想只做了1次…"></textarea></div>
+  <div class="review-q"><label>2. 目標進度如何？有往前推進嗎？</label>
+    <textarea id="rq2" placeholder="例如：學吉他練完C和弦，讀書目標本週沒執行…"></textarea></div>
+  <div class="review-q"><label>3. 這週遇到什麼障礙或困難？</label>
+    <textarea id="rq3" placeholder="例如：工作太累導致下班後沒動力…"></textarea></div>
+  <div class="review-q"><label>4. 下週想調整或嘗試什麼？</label>
+    <textarea id="rq4" placeholder="例如：把運動時間改到早上…"></textarea></div>
+
+  <div class="flex gap8 mb12">
+    <button class="btn btn-primary" onclick="genReview()">生成週記 ✨</button>
+    <button class="btn btn-secondary" onclick="clearReview()">清空</button>
+  </div>
+
+  <div id="review-out" style="display:none" class="out-block">
+    <div class="out-head"><h3>週記 Markdown</h3><button class="btn btn-sm btn-secondary" onclick="cp('rev-body')">📋 複製</button></div>
+    <div class="out-body" id="rev-body"></div>
+  </div>
+</div>
+
+<script>
+// ─── Storage ───────────────────────────────────────────────
+const LS={
+  g:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch{return d}},
+  s:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
+};
+
+// ─── Navigation ────────────────────────────────────────────
+const PAGES=['today','goals','capture','settings','review'];
+function showPage(n){
+  PAGES.forEach(p=>{
+    document.getElementById('page-'+p).classList.toggle('active',p===n);
+    document.querySelectorAll('nav button')[PAGES.indexOf(p)].classList.toggle('active',p===n);
+  });
+  if(n==='today')renderToday();
+  if(n==='goals'){const k=LS.g('pm_key','');if(k)document.getElementById('key-input').value=k;}
+  if(n==='capture')renderColl();
+  if(n==='settings')renderSettings();
+  if(n==='review')renderReviewPage();
+}
+
+// ─── Toast ─────────────────────────────────────────────────
+let toastT;
+function toast(m,d=2500){
+  const el=document.getElementById('toast');
+  el.textContent=m;el.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),d);
+}
+
+// ─── Copy helper ───────────────────────────────────────────
+function cp(id){
+  const t=document.getElementById(id).textContent;
+  navigator.clipboard.writeText(t).then(()=>toast('✅ 已複製到剪貼簿'));
+}
+
+// ─── DATE helpers ──────────────────────────────────────────
+const WD=['日','一','二','三','四','五','六'];
+function todayStr(){return new Date().toISOString().split('T')[0]}
+function fmtDate(d){return`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`}
+function weekNum(d){
+  const dt=new Date(d);const day=dt.getDay()||7;
+  dt.setDate(dt.getDate()+4-day);
+  const y=new Date(dt.getFullYear(),0,1);
+  return Math.ceil((((dt-y)/86400000)+1)/7);
+}
+
+// ─── PAGE 1: Today ─────────────────────────────────────────
+function renderToday(){
+  const now=new Date();
+  document.getElementById('hd-date').textContent=fmtDate(now);
+  document.getElementById('hd-day').textContent='星期'+WD[now.getDay()];
+  document.getElementById('banner-weekly').style.display=now.getDay()===0?'flex':'none';
+
+  let td=LS.g('pm_today',null);
+  const ts=todayStr();
+  if(!td||td.date!==ts){
+    td={date:ts,tasks:buildTasks(now)};
+    LS.s('pm_today',td);
+  }
+
+  const card=document.getElementById('today-card');
+  const tasks=td.tasks;
+  if(!tasks.length){
+    card.innerHTML='<p style="color:var(--text2);text-align:center;padding:20px">今天沒有排定習慣。請至「設定」頁面新增習慣。</p>';
+    return;
+  }
+  const done=tasks.filter(t=>t.done).length;
+  const pct=Math.round(done/tasks.length*100);
+  card.innerHTML=`
+    <div class="flex jb ac" style="margin-bottom:8px">
+      <span style="font-size:12px;color:var(--text2)">今日進度</span>
+      <span style="font-size:12px"><span style="color:var(--success)">${done}</span> / ${tasks.length}</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    ${tasks.map((t,i)=>`
+      <div class="task-item${t.done?' done':''}" id="ti-${i}">
+        <input type="checkbox"${t.done?' checked':''} onchange="toggleTask(${i})">
+        <div class="task-name">${escHtml(t.name)}</div>
+        ${t.time?`<span class="task-time">${t.time}</span>`:''}
+      </div>`).join('')}`;
+}
+
+function buildTasks(date){
+  const habits=LS.g('pm_habits',[]);
+  const tasks=habits
+    .filter(h=>habitToday(h,date))
+    .map(h=>({id:h.id,name:h.name,time:h.time||'',done:false}));
+  tasks.sort((a,b)=>{
+    if(!a.time&&!b.time)return 0;
+    if(!a.time)return 1;if(!b.time)return -1;
+    return a.time.localeCompare(b.time);
+  });
+  return tasks;
+}
+
+function habitToday(h,d){
+  const day=d.getDay();
+  switch(h.frequency){
+    case'daily':return true;
+    case'weekday':return day>=1&&day<=5;
+    case'weekend':return day===0||day===6;
+    case'weekly':return day===1;
+    case'3x':return[1,3,5].includes(day);
+    default:return true;
+  }
+}
+
+function toggleTask(i){
+  const td=LS.g('pm_today',null);if(!td)return;
+  td.tasks[i].done=!td.tasks[i].done;
+  LS.s('pm_today',td);renderToday();
+}
+
+function copyToday(){
+  const td=LS.g('pm_today',null);
+  if(!td||!td.tasks.length){toast('今天沒有任務');return;}
+  const now=new Date();
+  let txt=`# ${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} 星期${WD[now.getDay()]}\n\n`;
+  txt+=td.tasks.map(t=>`- [${t.done?'x':' '}] ${t.name}${t.time?' ('+t.time+')':''}`).join('\n');
+  navigator.clipboard.writeText(txt).then(()=>toast('✅ 已複製 Obsidian Markdown'));
+}
+
+// ─── PAGE 2: Goal Breakdown ────────────────────────────────
+let chat={goal:'',msgs:[],answers:[],done:false};
+const MAX_Q=4;
+
+function saveKey(){
+  const k=document.getElementById('key-input').value.trim();
+  if(!k){toast('請輸入 API Key');return;}
+  LS.s('pm_key',k);toast('✅ API Key 已儲存');
+}
+
+function getKey(){return LS.g('pm_key','');}
+
+async function callGemini(prompt,sysInst){
+  const key=getKey();
+  if(!key)throw new Error('請先輸入並儲存 Gemini API Key');
+  const body={
+    contents:[{role:'user',parts:[{text:prompt}]}],
+    generationConfig:{temperature:.7,maxOutputTokens:2048}
+  };
+  if(sysInst)body.system_instruction={parts:[{text:sysInst}]};
+  const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
+    {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||'API 呼叫失敗');}
+  const d=await res.json();
+  return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+}
+
+function startGoal(){
+  const goal=document.getElementById('goal-txt').value.trim();
+  if(!goal){toast('請輸入目標');return;}
+  if(!getKey()){toast('請先儲存 Gemini API Key');return;}
+  chat={goal,msgs:[],answers:[],done:false};
+  document.getElementById('goal-label').textContent='目標：'+goal;
+  document.getElementById('goal-form').style.display='none';
+  document.getElementById('goal-chat').style.display='block';
+  document.getElementById('goal-out').style.display='none';
+  document.getElementById('chat-msgs').innerHTML='';
+  document.getElementById('chat-foot').style.display='flex';
+  addMsg('ai','你每天或每週可以投入多少時間在這個目標上？');
+  chat.msgs.push({role:'ai',text:'你每天或每週可以投入多少時間在這個目標上？'});
+}
+
+function resetGoal(){
+  chat={goal:'',msgs:[],answers:[],done:false};
+  document.getElementById('goal-form').style.display='block';
+  document.getElementById('goal-chat').style.display='none';
+  document.getElementById('goal-out').style.display='none';
+  document.getElementById('goal-txt').value='';
+}
+
+function addMsg(role,text){
+  const el=document.createElement('div');
+  el.className='msg msg-'+role;
+  el.textContent=text;
+  const box=document.getElementById('chat-msgs');
+  box.appendChild(el);box.scrollTop=box.scrollHeight;
+  return el;
+}
+
+async function sendMsg(){
+  if(chat.done)return;
+  const inp=document.getElementById('chat-in');
+  const ans=inp.value.trim();if(!ans)return;
+  inp.value='';
+  addMsg('user',ans);
+  chat.answers.push(ans);
+  chat.msgs.push({role:'user',text:ans});
+
+  const btn=document.getElementById('chat-send');
+  btn.disabled=true;
+  const loading=addMsg('ai','');loading.innerHTML='<div class="spin"></div>';
+
+  try{
+    if(chat.answers.length>=MAX_Q){
+      // Generate output
+      chat.done=true;
+      document.getElementById('chat-foot').style.display='none';
+      loading.textContent='正在生成 Obsidian 計劃頁面，請稍候…';
+      await genGoalOutput(loading);
+    } else {
+      const hist=chat.msgs.map(m=>(m.role==='ai'?'AI問題':'使用者回答')+'：'+m.text).join('\n');
+      const nxt=await callGemini(
+        `使用者目標：「${chat.goal}」\n\n對話紀錄：\n${hist}\n\n這是第${chat.answers.length+1}個問題（共${MAX_Q}個）。根據對話，問一個最有助於了解使用者情況的問題，只回傳問題本身，不要加說明。`
+      );
+      loading.textContent=nxt;
+      chat.msgs.push({role:'ai',text:nxt});
+    }
+  }catch(e){
+    loading.textContent='⚠️ '+e.message;
+  }finally{
+    btn.disabled=false;
+  }
+}
+
+async function genGoalOutput(statusEl){
+  const hist=chat.msgs.map(m=>(m.role==='ai'?'AI問題':'使用者回答')+'：'+m.text).join('\n');
+  const prompt=`根據以下對話，為目標「${chat.goal}」生成三組 Obsidian Markdown 內容。
+
+對話紀錄：
+${hist}
+
+請嚴格使用以下三個分隔符輸出，分隔符單獨成行：
+===BLOCK1===
+（主頁面：目標概述、各里程碑摘要、每個里程碑用 [[里程碑名稱]] 連結格式、預計時間軸）
+
+===BLOCK2===
+（任務頁面：兩層結構，第一層里程碑標題 ##，第二層具體 - [ ] 任務，每里程碑至少4個任務）
+
+===BLOCK3===
+（習慣/例行頁面：每日或每週 routine，含建議執行時間，以及階段性里程碑，例如第1個月每週2次→第2個月每週3次，用 - [ ] 追蹤）
+
+要求：全部繁體中文，內容具體可執行，符合使用者的時間投入，若是習慣型目標要有漸進里程碑。`;
+
+  try{
+    const res=await callGemini(prompt);
+    const b1=res.match(/===BLOCK1===([\s\S]*?)(?====BLOCK2===|$)/)?.[1]?.trim()||'（生成失敗）';
+    const b2=res.match(/===BLOCK2===([\s\S]*?)(?====BLOCK3===|$)/)?.[1]?.trim()||'（生成失敗）';
+    const b3=res.match(/===BLOCK3===([\s\S]*?)$/)?.[1]?.trim()||'（生成失敗）';
+    document.getElementById('out-1').textContent=b1;
+    document.getElementById('out-2').textContent=b2;
+    document.getElementById('out-3').textContent=b3;
+    document.getElementById('goal-out').style.display='block';
+    statusEl.textContent='✅ 計劃已生成，請查看下方！';
+    document.getElementById('goal-out').scrollIntoView({behavior:'smooth'});
+  }catch(e){
+    statusEl.textContent='⚠️ 生成失敗：'+e.message;
+  }
+}
+
+// ─── PAGE 3: Quick Capture ─────────────────────────────────
+let pendCap=null;
+let collTab='book';
+
+async function doCapture(){
+  const txt=document.getElementById('cap-in').value.trim();
+  if(!txt){toast('請輸入內容');return;}
+  const btn=document.getElementById('cap-btn');
+  btn.disabled=true;btn.innerHTML='<div class="spin"></div>';
+
+  let cat='other';
+  try{
+    if(getKey()){
+      const r=await callGemini(
+        `將以下內容分類為其中一個類別：book、movie、shopping、goal、habit、other。只回傳類別英文名，不要其他文字。\n內容：${txt}`
+      );
+      const c=r.trim().toLowerCase().split(/\s/)[0];
+      if(['book','movie','shopping','goal','habit','other'].includes(c))cat=c;
+    } else {
+      const t=txt;
+      if(/書|閱讀|讀|novel/i.test(t))cat='book';
+      else if(/電影|影片|movie|film/i.test(t))cat='movie';
+      else if(/買|購買|購物|shop/i.test(t))cat='shopping';
+      else if(/目標|達成|完成|計劃|learn|學會/i.test(t))cat='goal';
+      else if(/習慣|每天|每日|routine|每週/i.test(t))cat='habit';
+    }
+  }catch{}
+
+  pendCap={text:txt,cat};
+  document.getElementById('cap-cat').value=cat;
+  onCatChange();
+  document.getElementById('cap-result').style.display='block';
+  btn.disabled=false;btn.textContent='分類 ✨';
+}
+
+function onCatChange(){
+  const v=document.getElementById('cap-cat').value;
+  const isGH=v==='goal'||v==='habit';
+  document.getElementById('cap-tosettings').style.display=isGH?'inline-flex':'none';
+}
+
+function confirmCap(){
+  if(!pendCap)return;
+  const cat=document.getElementById('cap-cat').value;
+  if(cat==='goal'||cat==='habit'){toast('請點擊「加入設定」');return;}
+  const colls=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  if(!colls[cat])colls[cat]=[];
+  colls[cat].push({id:Date.now(),title:pendCap.text,done:false});
+  LS.s('pm_colls',colls);
+  document.getElementById('cap-in').value='';
+  document.getElementById('cap-result').style.display='none';
+  pendCap=null;
+  switchTab(cat);
+  toast('✅ 已加入清單');
+}
+
+function capToSettings(){
+  if(!pendCap)return;
+  const cat=document.getElementById('cap-cat').value;
+  if(cat==='goal'){
+    const goals=LS.g('pm_goals',[]);
+    goals.push({id:Date.now(),name:pendCap.text,dueDate:'',createdAt:new Date().toISOString()});
+    LS.s('pm_goals',goals);toast('✅ 已加入目標設定');
+  }else if(cat==='habit'){
+    const habits=LS.g('pm_habits',[]);
+    habits.push({id:Date.now(),name:pendCap.text,frequency:'daily',time:'',createdAt:new Date().toISOString()});
+    LS.s('pm_habits',habits);toast('✅ 已加入習慣設定（請到設定頁完善細節）');
+  }
+  document.getElementById('cap-in').value='';
+  document.getElementById('cap-result').style.display='none';
+  pendCap=null;
+}
+
+function cancelCap(){
+  document.getElementById('cap-result').style.display='none';
+  pendCap=null;
+}
+
+function switchTab(tab){
+  collTab=tab;
+  const tabs=['book','movie','shopping','other'];
+  document.querySelectorAll('#page-capture .tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===tab));
+  renderColl();
+}
+
+function renderColl(){
+  const colls=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  const items=(colls[collTab]||[]);
+  const card=document.getElementById('coll-card');
+  if(!items.length){card.innerHTML='<p style="color:var(--text2);text-align:center;padding:16px">還沒有項目</p>';return;}
+  card.innerHTML=items.map((it,i)=>`
+    <div class="coll-item${it.done?' done':''}">
+      <input type="checkbox"${it.done?' checked':''} style="width:15px;height:15px;accent-color:var(--accent);flex-shrink:0" onchange="toggleColl(${i})">
+      <span class="coll-title">${escHtml(it.title)}</span>
+      <button class="btn btn-danger btn-sm" onclick="delColl(${i})">✕</button>
+    </div>`).join('');
+}
+
+function toggleColl(i){
+  const c=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  if(c[collTab]&&c[collTab][i])c[collTab][i].done=!c[collTab][i].done;
+  LS.s('pm_colls',c);renderColl();
+}
+
+function delColl(i){
+  const c=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  if(c[collTab])c[collTab].splice(i,1);
+  LS.s('pm_colls',c);renderColl();
+}
+
+// ─── PAGE 4: Settings ──────────────────────────────────────
+function renderSettings(){renderGoals();renderHabits();}
+
+function renderGoals(){
+  const goals=LS.g('pm_goals',[]);
+  const el=document.getElementById('goals-list');
+  if(!goals.length){el.innerHTML='<p style="color:var(--text2);padding:8px 0;font-size:13px">還沒有目標</p>';return;}
+  el.innerHTML=goals.map((g,i)=>`
+    <div class="list-row">
+      <div class="list-info">
+        <div class="list-name">${escHtml(g.name)}</div>
+        ${g.dueDate?`<div class="list-meta">預計完成：${g.dueDate}</div>`:''}
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="delGoal(${i})">刪除</button>
+    </div>`).join('');
+}
+
+function addGoal(){
+  const name=document.getElementById('g-name').value.trim();
+  const date=document.getElementById('g-date').value;
+  if(!name){toast('請輸入目標名稱');return;}
+  const goals=LS.g('pm_goals',[]);
+  goals.push({id:Date.now(),name,dueDate:date,createdAt:new Date().toISOString()});
+  LS.s('pm_goals',goals);
+  document.getElementById('g-name').value='';document.getElementById('g-date').value='';
+  renderGoals();toast('✅ 目標已新增');
+}
+
+function delGoal(i){
+  const goals=LS.g('pm_goals',[]);goals.splice(i,1);LS.s('pm_goals',goals);renderGoals();toast('已刪除');
+}
+
+const FREQ_LBL={daily:'每天',weekday:'週一到五',weekend:'週末',weekly:'每週一次','3x':'每週三次'};
+
+function renderHabits(){
+  const habits=LS.g('pm_habits',[]);
+  const el=document.getElementById('habits-list');
+  if(!habits.length){el.innerHTML='<p style="color:var(--text2);padding:8px 0;font-size:13px">還沒有習慣</p>';return;}
+  el.innerHTML=habits.map((h,i)=>`
+    <div class="list-row">
+      <div class="list-info">
+        <div class="list-name">${escHtml(h.name)}</div>
+        <div class="list-meta">${FREQ_LBL[h.frequency]||h.frequency}${h.time?' · '+h.time:''}</div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="delHabit(${i})">刪除</button>
+    </div>`).join('');
+}
+
+function addHabit(){
+  const name=document.getElementById('h-name').value.trim();
+  const freq=document.getElementById('h-freq').value;
+  const time=document.getElementById('h-time').value;
+  if(!name){toast('請輸入習慣名稱');return;}
+  const habits=LS.g('pm_habits',[]);
+  habits.push({id:Date.now(),name,frequency:freq,time,createdAt:new Date().toISOString()});
+  LS.s('pm_habits',habits);
+  document.getElementById('h-name').value='';document.getElementById('h-time').value='';
+  renderHabits();toast('✅ 習慣已新增');
+  // Invalidate today's task cache
+  const td=LS.g('pm_today',null);
+  if(td){td.date='';LS.s('pm_today',td);}
+}
+
+function delHabit(i){
+  const habits=LS.g('pm_habits',[]);habits.splice(i,1);LS.s('pm_habits',habits);renderHabits();toast('已刪除');
+  const td=LS.g('pm_today',null);if(td){td.date='';LS.s('pm_today',td);}
+}
+
+function exportJSON(){
+  const data={
+    goals:LS.g('pm_goals',[]),habits:LS.g('pm_habits',[]),
+    collections:LS.g('pm_colls',{}),exportedAt:new Date().toISOString()
+  };
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
+  a.download=`task-manager-${todayStr()}.json`;a.click();
+  URL.revokeObjectURL(url);toast('✅ 已匯出');
+}
+
+function importJSON(ev){
+  const file=ev.target.files[0];if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const d=JSON.parse(e.target.result);
+      if(d.goals)LS.s('pm_goals',d.goals);
+      if(d.habits)LS.s('pm_habits',d.habits);
+      if(d.collections)LS.s('pm_colls',d.collections);
+      renderSettings();toast('✅ 資料已匯入');
+    }catch{toast('❌ 匯入失敗，格式錯誤');}
+  };
+  r.readAsText(file);ev.target.value='';
+}
+
+// ─── PAGE 5: Weekly Review ─────────────────────────────────
+function renderReviewPage(){
+  const now=new Date();
+  const mon=new Date(now);mon.setDate(now.getDate()-(now.getDay()===0?6:now.getDay()-1));
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  document.getElementById('week-label').textContent=
+    `${now.getFullYear()} 年 第 ${weekNum(now)} 週（${fmt(mon)} – ${fmt(sun)}）`;
+}
+
+function genReview(){
+  const q1=document.getElementById('rq1').value.trim();
+  const q2=document.getElementById('rq2').value.trim();
+  const q3=document.getElementById('rq3').value.trim();
+  const q4=document.getElementById('rq4').value.trim();
+  if(!q1&&!q2&&!q3&&!q4){toast('請至少填寫一個問題');return;}
+  const now=new Date();
+  const wn=weekNum(now);
+  const mon=new Date(now);mon.setDate(now.getDate()-(now.getDay()===0?6:now.getDay()-1));
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);
+  const pad=n=>String(n).padStart(2,'0');
+  const iso=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const md=`# 週回顧 ${now.getFullYear()} W${pad(wn)} (${iso(mon)} ~ ${iso(sun)})
+
+## ✅ 習慣執行情況
+${q1||'（未填寫）'}
+
+## 🎯 目標進度
+${q2||'（未填寫）'}
+
+## ⚠️ 本週障礙
+${q3||'（未填寫）'}
+
+## 🔄 下週調整
+${q4||'（未填寫）'}
+
+---
+*Generated ${iso(now)}*`;
+  document.getElementById('rev-body').textContent=md;
+  document.getElementById('review-out').style.display='block';
+  document.getElementById('review-out').scrollIntoView({behavior:'smooth'});
+}
+
+function clearReview(){
+  ['rq1','rq2','rq3','rq4'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('review-out').style.display='none';
+}
+
+// ─── Util ──────────────────────────────────────────────────
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Init ──────────────────────────────────────────────────
+renderToday();
+const k=LS.g('pm_key','');if(k)document.getElementById('key-input').value=k;
+renderColl();
+</script>
+</body>
+</html>
