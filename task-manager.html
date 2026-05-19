@@ -12,10 +12,14 @@
   --success:#3fb950;--warning:#d29922;--danger:#f85149;--r:8px;
 }
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;line-height:1.6;min-height:100vh}
-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 8px;display:flex;position:sticky;top:0;z-index:100;overflow-x:auto}
+nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 8px;display:flex;align-items:center;position:sticky;top:0;z-index:100;overflow-x:auto}
 nav button{background:none;border:none;color:var(--text2);padding:13px 14px;cursor:pointer;font-size:13px;white-space:nowrap;border-bottom:2px solid transparent;transition:color .2s,border-color .2s;flex-shrink:0}
 nav button:hover{color:var(--text)}
 nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;margin-left:auto;margin-right:10px;transition:background .4s;align-self:center}
+#sync-dot.ok{background:var(--success)}
+#sync-dot.err{background:var(--danger)}
+#sync-dot.syncing{background:var(--warning)}
 .page{display:none;max-width:800px;margin:0 auto;padding:20px 16px}
 .page.active{display:block}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:12px}
@@ -42,6 +46,13 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 .task-item.done .task-name{text-decoration:line-through;color:var(--text2)}
 .task-name{flex:1;font-size:14px}
 .task-time{font-size:11px;color:var(--text2);flex-shrink:0}
+.streak-badge{font-size:11px;color:var(--warning);margin-left:5px;font-weight:600;vertical-align:middle}
+.hist-dots{display:flex;align-items:center;gap:5px;margin-bottom:12px}
+.hist-dot{width:9px;height:9px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);flex-shrink:0;cursor:default;transition:background .2s}
+.hist-dot.full{background:var(--success);border-color:var(--success)}
+.hist-dot.half{background:var(--warning);border-color:var(--warning)}
+.hist-dot.low{background:var(--danger);border-color:var(--danger)}
+.hist-dot.today-empty{border-color:var(--accent)}
 .banner{background:rgba(210,153,34,.13);border:1px solid rgba(210,153,34,.35);border-radius:var(--r);padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px}
 .chat-box{border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .chat-msgs{min-height:180px;max-height:380px;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
@@ -68,6 +79,8 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 .list-info{flex:1;min-width:0}
 .list-name{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .list-meta{font-size:11px;color:var(--text2)}
+.edit-row{padding:10px 12px;background:var(--surface2);border-radius:var(--r);margin-bottom:6px;border:1px solid var(--accent);display:flex;align-items:center;gap:8px}
+.edit-row input,.edit-row select{margin-bottom:6px}
 .review-q{margin-bottom:14px}
 .review-q label{font-size:13px;color:var(--text);margin-bottom:6px}
 .prog-bar{background:var(--surface2);border-radius:4px;height:5px;margin-bottom:14px;overflow:hidden}
@@ -93,6 +106,7 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
   <button onclick="showPage('capture')">⚡ 快速收集</button>
   <button onclick="showPage('settings')">⚙️ 設定</button>
   <button onclick="showPage('review')">📝 週回顧</button>
+  <span id="sync-dot"></span>
 </nav>
 
 <div id="toast"></div>
@@ -106,7 +120,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
       <button class="btn btn-sm btn-secondary" style="margin-left:8px" onclick="showPage('review')">前往週回顧</button>
     </div>
   </div>
-
   <div class="flex jb ac mb16">
     <div>
       <div style="font-size:20px;font-weight:700" id="hd-date">—</div>
@@ -114,7 +127,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
     </div>
     <button class="btn btn-secondary btn-sm" onclick="copyToday()">📋 複製 Markdown</button>
   </div>
-
   <div class="card" id="today-card">
     <p style="color:var(--text2);text-align:center;padding:20px">載入中…</p>
   </div>
@@ -123,7 +135,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 <!-- ===== PAGE 2 ===== -->
 <div id="page-goals" class="page">
   <h2>🎯 目標拆解</h2>
-
   <div class="card mb12" id="goal-form">
     <div class="form-group">
       <label>你想達成的目標</label>
@@ -131,7 +142,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
     </div>
     <button class="btn btn-primary" onclick="startGoal()">開始拆解 ✨</button>
   </div>
-
   <div id="goal-chat" style="display:none">
     <div class="card mb12 flex jb ac">
       <span id="goal-label" style="font-size:13px;color:var(--text2)"></span>
@@ -145,7 +155,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
       </div>
     </div>
   </div>
-
   <div id="goal-out" style="display:none">
     <h2 style="margin-top:8px">📄 Obsidian 頁面內容</h2>
     <div class="out-block">
@@ -166,14 +175,12 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 <!-- ===== PAGE 3 ===== -->
 <div id="page-capture" class="page">
   <h2>⚡ 快速收集</h2>
-
   <div class="card mb12">
     <label>輸入任何想法（書、電影、目標、習慣、購物…）</label>
     <div class="flex gap8 mt8">
       <input type="text" id="cap-in" placeholder="想讀的書、想學的技能、想買的東西…" style="flex:1" onkeypress="if(event.key==='Enter')doCapture()">
       <button class="btn btn-primary btn-sm" id="cap-btn" onclick="doCapture()">分類 ✨</button>
     </div>
-
     <div id="cap-result" style="display:none" class="mt12">
       <div class="flex ac gap8 mb8">
         <span style="font-size:13px;flex-shrink:0">分類：</span>
@@ -193,7 +200,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
       </div>
     </div>
   </div>
-
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('book')">📚 書單</button>
     <button class="tab-btn" onclick="switchTab('movie')">🎬 電影</button>
@@ -209,11 +215,10 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
     <h2 style="margin:0">⚙️ 設定</h2>
     <div class="flex gap8">
       <button class="btn btn-secondary btn-sm" onclick="exportICS()">📤 匯出 ICS</button>
-      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('imp-file').click()">📥 匯入</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('imp-file').click()">📥 匯入備份</button>
       <input type="file" id="imp-file" style="display:none" accept=".json" onchange="importJSON(event)">
     </div>
   </div>
-
   <div class="card mb12">
     <h3>🎯 目標管理</h3>
     <div class="form-row mt8">
@@ -223,7 +228,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
     </div>
     <div id="goals-list"></div>
   </div>
-
   <div class="card">
     <h3>✅ 習慣管理</h3>
     <div class="form-row mt8">
@@ -250,21 +254,18 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
   <div class="card mb12">
     <div style="font-size:13px;color:var(--text2)" id="week-label">—</div>
   </div>
-
   <div class="review-q"><label>1. 這週哪些習慣有持續做到？哪些需要改進？</label>
-    <textarea id="rq1" placeholder="例如：跑步做到3次，冥想只做了1次…"></textarea></div>
+    <textarea id="rq1" placeholder="例如：跑步做到3次，冥想只做了1次…" oninput="autoSaveReview()"></textarea></div>
   <div class="review-q"><label>2. 目標進度如何？有往前推進嗎？</label>
-    <textarea id="rq2" placeholder="例如：學吉他練完C和弦，讀書目標本週沒執行…"></textarea></div>
+    <textarea id="rq2" placeholder="例如：學吉他練完C和弦，讀書目標本週沒執行…" oninput="autoSaveReview()"></textarea></div>
   <div class="review-q"><label>3. 這週遇到什麼障礙或困難？</label>
-    <textarea id="rq3" placeholder="例如：工作太累導致下班後沒動力…"></textarea></div>
+    <textarea id="rq3" placeholder="例如：工作太累導致下班後沒動力…" oninput="autoSaveReview()"></textarea></div>
   <div class="review-q"><label>4. 下週想調整或嘗試什麼？</label>
-    <textarea id="rq4" placeholder="例如：把運動時間改到早上…"></textarea></div>
-
+    <textarea id="rq4" placeholder="例如：把運動時間改到早上…" oninput="autoSaveReview()"></textarea></div>
   <div class="flex gap8 mb12">
     <button class="btn btn-primary" onclick="genReview()">生成週記 ✨</button>
     <button class="btn btn-secondary" onclick="clearReview()">清空</button>
   </div>
-
   <div id="review-out" style="display:none" class="out-block">
     <div class="out-head"><h3>週記 Markdown</h3><button class="btn btn-sm btn-secondary" onclick="cp('rev-body')">📋 複製</button></div>
     <div class="out-body" id="rev-body"></div>
@@ -289,35 +290,45 @@ const cache={};
 function cget(k,d){return Object.prototype.hasOwnProperty.call(cache,k)?cache[k]:d;}
 function cset(k,v){
   cache[k]=v;
-  db.collection(COL).doc(k).set({data:v}).catch(e=>console.error('Firestore write:',e));
+  setSyncDot('syncing');
+  db.collection(COL).doc(k).set({data:v})
+    .then(()=>setSyncDot('ok'))
+    .catch(e=>{console.error('Firestore write:',e);setSyncDot('err');});
 }
 
-const SYNC_KEYS=['pm_habits','pm_goals','pm_colls','pm_today'];
+function setSyncDot(state){
+  const el=document.getElementById('sync-dot');if(!el)return;
+  el.id='sync-dot';el.className='';
+  el.style.cssText='width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-left:auto;margin-right:10px;transition:background .4s;align-self:center;background:'+(state==='ok'?'var(--success)':state==='err'?'var(--danger)':state==='syncing'?'var(--warning)':'var(--border)');
+  if(state==='ok'){clearTimeout(el._t);el._t=setTimeout(()=>setSyncDot('idle'),3000);}
+}
+
+const SYNC_KEYS=['pm_habits','pm_goals','pm_colls','pm_today','pm_review','pm_streaks','pm_history'];
 
 async function initDB(){
+  setSyncDot('syncing');
   try{
     const docs=await Promise.all(SYNC_KEYS.map(k=>db.collection(COL).doc(k).get()));
     docs.forEach((d,i)=>{if(d.exists)cache[SYNC_KEYS[i]]=d.data().data;});
+    setSyncDot('ok');
   }catch(e){
-    console.error('Firestore load:',e);
+    console.error('Firestore load:',e);setSyncDot('err');
     toast('⚠️ 無法連線雲端，資料可能不同步');
   }
-  renderToday();
-  renderColl();
+  renderToday();renderColl();
 
-  // 跨裝置即時同步
   SYNC_KEYS.forEach(k=>{
     db.collection(COL).doc(k).onSnapshot(snap=>{
       if(!snap.exists)return;
       const fresh=snap.data().data;
       if(JSON.stringify(cache[k])===JSON.stringify(fresh))return;
       cache[k]=fresh;
-      const pg=document.querySelector('.page.active');
-      if(!pg)return;
+      const pg=document.querySelector('.page.active');if(!pg)return;
       const id=pg.id.replace('page-','');
-      if(id==='today'&&(k==='pm_today'||k==='pm_habits'))renderToday();
+      if(id==='today'&&(k==='pm_today'||k==='pm_habits'||k==='pm_streaks'||k==='pm_history'))renderToday();
       else if(id==='capture'&&k==='pm_colls')renderColl();
       else if(id==='settings'&&(k==='pm_habits'||k==='pm_goals'))renderSettings();
+      else if(id==='review'&&k==='pm_review')loadReviewAnswers();
     },e=>console.error('onSnapshot:',e));
   });
 }
@@ -330,7 +341,6 @@ function showPage(n){
     document.querySelectorAll('nav button')[PAGES.indexOf(p)].classList.toggle('active',p===n);
   });
   if(n==='today')renderToday();
-
   if(n==='capture')renderColl();
   if(n==='settings')renderSettings();
   if(n==='review')renderReviewPage();
@@ -346,13 +356,19 @@ function toast(m,d=2500){
 
 // ─── Copy helper ───────────────────────────────────────────
 function cp(id){
-  const t=document.getElementById(id).textContent;
-  navigator.clipboard.writeText(t).then(()=>toast('✅ 已複製到剪貼簿'));
+  navigator.clipboard.writeText(document.getElementById(id).textContent)
+    .then(()=>toast('✅ 已複製到剪貼簿'));
 }
 
 // ─── DATE helpers ──────────────────────────────────────────
 const WD=['日','一','二','三','四','五','六'];
-function todayStr(){return new Date().toISOString().split('T')[0]}
+function todayStr(){
+  const d=new Date();
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function localDateStr(d){
+  return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function fmtDate(d){return`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`}
 function weekNum(d){
   const dt=new Date(d);const day=dt.getDay()||7;
@@ -371,40 +387,80 @@ function renderToday(){
   let td=cget('pm_today',null);
   const ts=todayStr();
   if(!td||td.date!==ts){
+    // 儲存前一天完成紀錄
+    if(td&&td.date){
+      const hist=cget('pm_history',{});
+      const prev=td.tasks.filter(t=>!t.manual);
+      if(prev.length){
+        hist[td.date]={done:prev.filter(t=>t.done).length,total:prev.length};
+        cset('pm_history',hist);
+      }
+    }
     td={date:ts,tasks:buildTasks(now)};
     cset('pm_today',td);
   }
 
-  const card=document.getElementById('today-card');
+  const streaks=cget('pm_streaks',{});
+  const hist=cget('pm_history',{});
   const tasks=td.tasks;
-  if(!tasks.length){
-    card.innerHTML='<p style="color:var(--text2);text-align:center;padding:20px">今天沒有排定習慣。請至「設定」頁面新增習慣。</p>';
-    return;
-  }
   const done=tasks.filter(t=>t.done).length;
-  const pct=Math.round(done/tasks.length*100);
-  card.innerHTML=`
+  const total=tasks.length;
+  const pct=total?Math.round(done/total*100):0;
+
+  document.getElementById('today-card').innerHTML=`
+    ${buildHistDots(hist,ts)}
     <div class="flex jb ac" style="margin-bottom:8px">
       <span style="font-size:12px;color:var(--text2)">今日進度</span>
-      <span style="font-size:12px"><span style="color:var(--success)">${done}</span> / ${tasks.length}</span>
+      <span style="font-size:12px"><span style="color:var(--success)">${done}</span> / ${total}</span>
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
     ${tasks.map((t,i)=>`
       <div class="task-item${t.done?' done':''}" id="ti-${i}">
         <input type="checkbox"${t.done?' checked':''} onchange="toggleTask(${i})">
-        <div class="task-name">${escHtml(t.name)}</div>
+        <div class="task-name">${escHtml(t.name)}${!t.manual?getStreakBadge(streaks,t.id):''}</div>
         ${t.time?`<span class="task-time">${t.time}</span>`:''}
-      </div>`).join('')}`;
+        ${t.manual?`<button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:11px;flex-shrink:0" onclick="delTask(${i})">✕</button>`:''}
+      </div>`).join('')}
+    <div class="flex gap8 mt8">
+      <input type="text" id="manual-in" placeholder="新增臨時任務…" style="flex:1" onkeypress="if(event.key==='Enter')addManualTask()">
+      <button class="btn btn-secondary btn-sm" onclick="addManualTask()">＋</button>
+    </div>`;
+}
+
+function buildHistDots(hist,today){
+  const days=[];
+  for(let i=6;i>=0;i--){
+    const d=new Date();d.setDate(d.getDate()-i);
+    const ds=localDateStr(d);
+    const h=hist[ds];
+    const isToday=ds===today;
+    let bg='var(--border)';let border='var(--border)';
+    if(h&&h.total>0){
+      const r=h.done/h.total;
+      if(r===1){bg='var(--success)';border='var(--success)';}
+      else if(r>=0.5){bg='var(--warning)';border='var(--warning)';}
+      else{bg='var(--danger)';border='var(--danger)';}
+    }else if(isToday){border='var(--accent)';}
+    const tip=(h&&h.total)?`${WD[d.getDay()]} ${h.done}/${h.total}`:(isToday?'今天':'');
+    days.push(`<span style="width:9px;height:9px;border-radius:50%;background:${bg};border:1.5px solid ${border};flex-shrink:0;display:inline-block;cursor:default" title="${tip}"></span>`);
+  }
+  return`<div style="display:flex;align-items:center;gap:5px;margin-bottom:12px">${days.join('')}<span style="font-size:11px;color:var(--text2);margin-left:3px">7天紀錄</span></div>`;
+}
+
+function getStreakBadge(streaks,habitId){
+  if(!habitId)return'';
+  const s=streaks[habitId];
+  if(!s||s.count<2)return'';
+  return`<span class="streak-badge">🔥${s.count}</span>`;
 }
 
 function buildTasks(date){
   const habits=cget('pm_habits',[]);
-  const tasks=habits
-    .filter(h=>habitToday(h,date))
-    .map(h=>({id:h.id,name:h.name,time:h.time||'',done:false}));
+  const tasks=habits.filter(h=>habitToday(h,date))
+    .map(h=>({id:h.id,name:h.name,time:h.time||'',done:false,manual:false}));
   tasks.sort((a,b)=>{
     if(!a.time&&!b.time)return 0;
-    if(!a.time)return 1;if(!b.time)return -1;
+    if(!a.time)return 1;if(!b.time)return-1;
     return a.time.localeCompare(b.time);
   });
   return tasks;
@@ -424,8 +480,55 @@ function habitToday(h,d){
 
 function toggleTask(i){
   const td=cget('pm_today',null);if(!td)return;
-  td.tasks[i].done=!td.tasks[i].done;
-  cset('pm_today',td);renderToday();
+  const t=td.tasks[i];
+  t.done=!t.done;
+  // 更新歷史紀錄
+  const hist=cget('pm_history',{});
+  const ts=todayStr();
+  const hTasks=td.tasks.filter(x=>!x.manual);
+  hist[ts]={done:hTasks.filter(x=>x.done).length,total:hTasks.length};
+  cache['pm_history']=hist;
+  cset('pm_today',td);
+  cset('pm_history',hist);
+  if(!t.manual&&t.id)updateStreak(t.id,t.done);
+  renderToday();
+}
+
+function updateStreak(habitId,isDone){
+  const streaks=cget('pm_streaks',{});
+  const ts=todayStr();
+  const yd=new Date();yd.setDate(yd.getDate()-1);
+  const ydStr=localDateStr(yd);
+  if(isDone){
+    const s=streaks[habitId]||{count:0,lastDate:''};
+    if(s.lastDate===ydStr)s.count++;
+    else if(s.lastDate===ts){/* 已計算 */}
+    else s.count=1;
+    s.lastDate=ts;
+    streaks[habitId]=s;
+  }else{
+    const s=streaks[habitId];
+    if(s&&s.lastDate===ts){
+      s.count=Math.max(0,s.count-1);
+      if(s.count===0)delete streaks[habitId];
+      else{s.lastDate=ydStr;streaks[habitId]=s;}
+    }
+  }
+  cset('pm_streaks',streaks);
+}
+
+function addManualTask(){
+  const inp=document.getElementById('manual-in');if(!inp)return;
+  const name=inp.value.trim();if(!name)return;
+  const td=cget('pm_today',null);if(!td)return;
+  td.tasks.push({id:null,name,time:'',done:false,manual:true});
+  cset('pm_today',td);inp.value='';renderToday();
+}
+
+function delTask(i){
+  const td=cget('pm_today',null);
+  if(!td||!td.tasks[i]||!td.tasks[i].manual)return;
+  td.tasks.splice(i,1);cset('pm_today',td);renderToday();
 }
 
 function copyToday(){
@@ -441,7 +544,7 @@ function copyToday(){
 let chat={goal:'',msgs:[],answers:[],done:false};
 const MAX_Q=4;
 
-function getKey(){return 'AIzaSyAhJWdUI-5C4DkHbZMWUQeChW87A6mR0Ws';}
+function getKey(){return'AIzaSyAhJWdUI-5C4DkHbZMWUQeChW87A6mR0Ws';}
 
 async function callGemini(prompt,sysInst){
   const key=getKey();
@@ -461,7 +564,6 @@ async function callGemini(prompt,sysInst){
 function startGoal(){
   const goal=document.getElementById('goal-txt').value.trim();
   if(!goal){toast('請輸入目標');return;}
-  if(!getKey()){toast('請先儲存 Gemini API Key');return;}
   chat={goal,msgs:[],answers:[],done:false};
   document.getElementById('goal-label').textContent='目標：'+goal;
   document.getElementById('goal-form').style.display='none';
@@ -483,8 +585,7 @@ function resetGoal(){
 
 function addMsg(role,text){
   const el=document.createElement('div');
-  el.className='msg msg-'+role;
-  el.textContent=text;
+  el.className='msg msg-'+role;el.textContent=text;
   const box=document.getElementById('chat-msgs');
   box.appendChild(el);box.scrollTop=box.scrollHeight;
   return el;
@@ -494,35 +595,22 @@ async function sendMsg(){
   if(chat.done)return;
   const inp=document.getElementById('chat-in');
   const ans=inp.value.trim();if(!ans)return;
-  inp.value='';
-  addMsg('user',ans);
-  chat.answers.push(ans);
-  chat.msgs.push({role:'user',text:ans});
-
-  const btn=document.getElementById('chat-send');
-  btn.disabled=true;
+  inp.value='';addMsg('user',ans);
+  chat.answers.push(ans);chat.msgs.push({role:'user',text:ans});
+  const btn=document.getElementById('chat-send');btn.disabled=true;
   const loading=addMsg('ai','');loading.innerHTML='<div class="spin"></div>';
-
   try{
     if(chat.answers.length>=MAX_Q){
-      // Generate output
-      chat.done=true;
-      document.getElementById('chat-foot').style.display='none';
+      chat.done=true;document.getElementById('chat-foot').style.display='none';
       loading.textContent='正在生成 Obsidian 計劃頁面，請稍候…';
       await genGoalOutput(loading);
-    } else {
+    }else{
       const hist=chat.msgs.map(m=>(m.role==='ai'?'AI問題':'使用者回答')+'：'+m.text).join('\n');
-      const nxt=await callGemini(
-        `使用者目標：「${chat.goal}」\n\n對話紀錄：\n${hist}\n\n這是第${chat.answers.length+1}個問題（共${MAX_Q}個）。根據對話，問一個最有助於了解使用者情況的問題，只回傳問題本身，不要加說明。`
-      );
-      loading.textContent=nxt;
-      chat.msgs.push({role:'ai',text:nxt});
+      const nxt=await callGemini(`使用者目標：「${chat.goal}」\n\n對話紀錄：\n${hist}\n\n這是第${chat.answers.length+1}個問題（共${MAX_Q}個）。根據對話，問一個最有助於了解使用者情況的問題，只回傳問題本身，不要加說明。`);
+      loading.textContent=nxt;chat.msgs.push({role:'ai',text:nxt});
     }
-  }catch(e){
-    loading.textContent='⚠️ '+e.message;
-  }finally{
-    btn.disabled=false;
-  }
+  }catch(e){loading.textContent='⚠️ '+e.message;}
+  finally{btn.disabled=false;}
 }
 
 async function genGoalOutput(statusEl){
@@ -543,7 +631,6 @@ ${hist}
 （習慣/例行頁面：每日或每週 routine，含建議執行時間，以及階段性里程碑，例如第1個月每週2次→第2個月每週3次，用 - [ ] 追蹤）
 
 要求：全部繁體中文，內容具體可執行，符合使用者的時間投入，若是習慣型目標要有漸進里程碑。`;
-
   try{
     const res=await callGemini(prompt);
     const b1=res.match(/===BLOCK1===([\s\S]*?)(?====BLOCK2===|$)/)?.[1]?.trim()||'（生成失敗）';
@@ -555,50 +642,40 @@ ${hist}
     document.getElementById('goal-out').style.display='block';
     statusEl.textContent='✅ 計劃已生成，請查看下方！';
     document.getElementById('goal-out').scrollIntoView({behavior:'smooth'});
-  }catch(e){
-    statusEl.textContent='⚠️ 生成失敗：'+e.message;
-  }
+  }catch(e){statusEl.textContent='⚠️ 生成失敗：'+e.message;}
 }
 
 // ─── PAGE 3: Quick Capture ─────────────────────────────────
-let pendCap=null;
-let collTab='book';
+let pendCap=null;let collTab='book';
 
 async function doCapture(){
   const txt=document.getElementById('cap-in').value.trim();
   if(!txt){toast('請輸入內容');return;}
   const btn=document.getElementById('cap-btn');
   btn.disabled=true;btn.innerHTML='<div class="spin"></div>';
-
   let cat='other';
   try{
     if(getKey()){
-      const r=await callGemini(
-        `將以下內容分類為其中一個類別：book、movie、shopping、goal、habit、other。只回傳類別英文名，不要其他文字。\n內容：${txt}`
-      );
+      const r=await callGemini(`將以下內容分類為其中一個類別：book、movie、shopping、goal、habit、other。只回傳類別英文名，不要其他文字。\n內容：${txt}`);
       const c=r.trim().toLowerCase().split(/\s/)[0];
       if(['book','movie','shopping','goal','habit','other'].includes(c))cat=c;
-    } else {
-      const t=txt;
-      if(/書|閱讀|讀|novel/i.test(t))cat='book';
-      else if(/電影|影片|movie|film/i.test(t))cat='movie';
-      else if(/買|購買|購物|shop/i.test(t))cat='shopping';
-      else if(/目標|達成|完成|計劃|learn|學會/i.test(t))cat='goal';
-      else if(/習慣|每天|每日|routine|每週/i.test(t))cat='habit';
+    }else{
+      if(/書|閱讀|讀|novel/i.test(txt))cat='book';
+      else if(/電影|影片|movie|film/i.test(txt))cat='movie';
+      else if(/買|購買|購物|shop/i.test(txt))cat='shopping';
+      else if(/目標|達成|完成|計劃|learn|學會/i.test(txt))cat='goal';
+      else if(/習慣|每天|每日|routine|每週/i.test(txt))cat='habit';
     }
   }catch{}
-
   pendCap={text:txt,cat};
-  document.getElementById('cap-cat').value=cat;
-  onCatChange();
+  document.getElementById('cap-cat').value=cat;onCatChange();
   document.getElementById('cap-result').style.display='block';
   btn.disabled=false;btn.textContent='分類 ✨';
 }
 
 function onCatChange(){
   const v=document.getElementById('cap-cat').value;
-  const isGH=v==='goal'||v==='habit';
-  document.getElementById('cap-tosettings').style.display=isGH?'inline-flex':'none';
+  document.getElementById('cap-tosettings').style.display=(v==='goal'||v==='habit')?'inline-flex':'none';
 }
 
 function confirmCap(){
@@ -611,9 +688,7 @@ function confirmCap(){
   cset('pm_colls',colls);
   document.getElementById('cap-in').value='';
   document.getElementById('cap-result').style.display='none';
-  pendCap=null;
-  switchTab(cat);
-  toast('✅ 已加入清單');
+  pendCap=null;switchTab(cat);toast('✅ 已加入清單');
 }
 
 function capToSettings(){
@@ -633,10 +708,7 @@ function capToSettings(){
   pendCap=null;
 }
 
-function cancelCap(){
-  document.getElementById('cap-result').style.display='none';
-  pendCap=null;
-}
+function cancelCap(){document.getElementById('cap-result').style.display='none';pendCap=null;}
 
 function switchTab(tab){
   collTab=tab;
@@ -647,7 +719,7 @@ function switchTab(tab){
 
 function renderColl(){
   const colls=cget('pm_colls',{book:[],movie:[],shopping:[],other:[]});
-  const items=(colls[collTab]||[]);
+  const items=colls[collTab]||[];
   const card=document.getElementById('coll-card');
   if(!items.length){card.innerHTML='<p style="color:var(--text2);text-align:center;padding:16px">還沒有項目</p>';return;}
   card.innerHTML=items.map((it,i)=>`
@@ -678,13 +750,38 @@ function renderGoals(){
   const el=document.getElementById('goals-list');
   if(!goals.length){el.innerHTML='<p style="color:var(--text2);padding:8px 0;font-size:13px">還沒有目標</p>';return;}
   el.innerHTML=goals.map((g,i)=>`
-    <div class="list-row">
+    <div class="list-row" id="goal-row-${i}">
       <div class="list-info">
         <div class="list-name">${escHtml(g.name)}</div>
         ${g.dueDate?`<div class="list-meta">預計完成：${g.dueDate}</div>`:''}
       </div>
+      <button class="btn btn-secondary btn-sm" onclick="editGoal(${i})">編輯</button>
       <button class="btn btn-danger btn-sm" onclick="delGoal(${i})">刪除</button>
     </div>`).join('');
+}
+
+function editGoal(i){
+  const g=cget('pm_goals',[])[i];if(!g)return;
+  const row=document.getElementById('goal-row-'+i);
+  row.className='edit-row';
+  row.innerHTML=`
+    <div style="flex:1">
+      <input type="text" id="eg-name-${i}" value="${escHtml(g.name)}" style="margin-bottom:6px">
+      <input type="date" id="eg-date-${i}" value="${g.dueDate||''}">
+    </div>
+    <div class="flex gap8" style="flex-shrink:0;margin-left:8px">
+      <button class="btn btn-primary btn-sm" onclick="saveGoal(${i})">儲存</button>
+      <button class="btn btn-secondary btn-sm" onclick="renderGoals()">取消</button>
+    </div>`;
+}
+
+function saveGoal(i){
+  const name=document.getElementById('eg-name-'+i)?.value.trim();
+  const date=document.getElementById('eg-date-'+i)?.value||'';
+  if(!name){toast('請輸入目標名稱');return;}
+  const goals=cget('pm_goals',[]);
+  goals[i].name=name;goals[i].dueDate=date;
+  cset('pm_goals',goals);renderGoals();toast('✅ 已更新');
 }
 
 function addGoal(){
@@ -699,23 +796,65 @@ function addGoal(){
 }
 
 function delGoal(i){
-  const goals=cget('pm_goals',[]);goals.splice(i,1);cset('pm_goals',goals);renderGoals();toast('已刪除');
+  const goals=cget('pm_goals',[]);goals.splice(i,1);
+  cset('pm_goals',goals);renderGoals();toast('已刪除');
 }
 
 const FREQ_LBL={daily:'每天',weekday:'週一到五',weekend:'週末',weekly:'每週一次','3x':'每週三次'};
 
 function renderHabits(){
   const habits=cget('pm_habits',[]);
+  const streaks=cget('pm_streaks',{});
   const el=document.getElementById('habits-list');
   if(!habits.length){el.innerHTML='<p style="color:var(--text2);padding:8px 0;font-size:13px">還沒有習慣</p>';return;}
-  el.innerHTML=habits.map((h,i)=>`
-    <div class="list-row">
+  el.innerHTML=habits.map((h,i)=>{
+    const s=streaks[h.id];
+    const badge=s&&s.count>=2?`<span class="streak-badge">🔥${s.count}</span>`:'';
+    return`<div class="list-row" id="habit-row-${i}">
       <div class="list-info">
-        <div class="list-name">${escHtml(h.name)}</div>
+        <div class="list-name">${escHtml(h.name)}${badge}</div>
         <div class="list-meta">${FREQ_LBL[h.frequency]||h.frequency}${h.time?' · '+h.time:''}</div>
       </div>
+      <button class="btn btn-secondary btn-sm" onclick="editHabit(${i})">編輯</button>
       <button class="btn btn-danger btn-sm" onclick="delHabit(${i})">刪除</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+function editHabit(i){
+  const h=cget('pm_habits',[])[i];if(!h)return;
+  const row=document.getElementById('habit-row-'+i);
+  row.className='edit-row';
+  row.innerHTML=`
+    <div style="flex:1">
+      <input type="text" id="eh-name-${i}" value="${escHtml(h.name)}" style="margin-bottom:6px">
+      <div class="flex gap8">
+        <select id="eh-freq-${i}" style="flex:1">
+          <option value="daily"${h.frequency==='daily'?' selected':''}>每天</option>
+          <option value="weekday"${h.frequency==='weekday'?' selected':''}>週一到五</option>
+          <option value="weekend"${h.frequency==='weekend'?' selected':''}>週末</option>
+          <option value="weekly"${h.frequency==='weekly'?' selected':''}>每週一次</option>
+          <option value="3x"${h.frequency==='3x'?' selected':''}>每週三次</option>
+        </select>
+        <input type="time" id="eh-time-${i}" value="${h.time||''}" style="width:110px">
+      </div>
+    </div>
+    <div class="flex gap8" style="flex-shrink:0;margin-left:8px">
+      <button class="btn btn-primary btn-sm" onclick="saveHabit(${i})">儲存</button>
+      <button class="btn btn-secondary btn-sm" onclick="renderHabits()">取消</button>
+    </div>`;
+}
+
+function saveHabit(i){
+  const name=document.getElementById('eh-name-'+i)?.value.trim();
+  const freq=document.getElementById('eh-freq-'+i)?.value;
+  const time=document.getElementById('eh-time-'+i)?.value||'';
+  if(!name){toast('請輸入習慣名稱');return;}
+  const habits=cget('pm_habits',[]);
+  habits[i]={...habits[i],name,frequency:freq,time};
+  cset('pm_habits',habits);
+  const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
+  renderHabits();toast('✅ 已更新');
 }
 
 function addHabit(){
@@ -728,13 +867,12 @@ function addHabit(){
   cset('pm_habits',habits);
   document.getElementById('h-name').value='';document.getElementById('h-time').value='';
   renderHabits();toast('✅ 習慣已新增');
-  // Invalidate today's task cache
-  const td=cget('pm_today',null);
-  if(td){td.date='';cset('pm_today',td);}
+  const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
 }
 
 function delHabit(i){
-  const habits=cget('pm_habits',[]);habits.splice(i,1);cset('pm_habits',habits);renderHabits();toast('已刪除');
+  const habits=cget('pm_habits',[]);habits.splice(i,1);
+  cset('pm_habits',habits);renderHabits();toast('已刪除');
   const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
 }
 
@@ -746,7 +884,6 @@ function exportICS(){
   const pad=n=>String(n).padStart(2,'0');
   const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
   const esc=s=>String(s).replace(/\\/g,'\\\\').replace(/,/g,'\\,').replace(/;/g,'\\;').replace(/\n/g,'\\n');
-
   const freqMap={
     daily:'RRULE:FREQ=DAILY',
     weekday:'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
@@ -754,10 +891,7 @@ function exportICS(){
     weekly:'RRULE:FREQ=WEEKLY;BYDAY=MO',
     '3x':'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR'
   };
-
   const todos=[];
-
-  // 習慣 → 重複提醒
   habits.forEach(h=>{
     const lines=['BEGIN:VTODO',`UID:habit-${h.id}@tm`,`DTSTAMP:${stamp}`];
     if(h.time){
@@ -769,25 +903,18 @@ function exportICS(){
     lines.push(`SUMMARY:${esc(h.name)}`,freqMap[h.frequency]||'RRULE:FREQ=DAILY','STATUS:NEEDS-ACTION','END:VTODO');
     todos.push(lines.join('\r\n'));
   });
-
-  // 目標 → 含截止日提醒
   goals.forEach(g=>{
     const lines=['BEGIN:VTODO',`UID:goal-${g.id}@tm`,`DTSTAMP:${stamp}`,`SUMMARY:🎯 ${esc(g.name)}`,'STATUS:NEEDS-ACTION'];
     if(g.dueDate)lines.push(`DUE;VALUE=DATE:${g.dueDate.replace(/-/g,'')}`);
-    lines.push('END:VTODO');
-    todos.push(lines.join('\r\n'));
+    lines.push('END:VTODO');todos.push(lines.join('\r\n'));
   });
-
-  // 收集清單 → 未完成項目
   const catEmoji={book:'📚 ',movie:'🎬 ',shopping:'🛒 ',other:'📌 '};
   Object.entries(colls).forEach(([cat,items])=>{
     (items||[]).filter(it=>!it.done).forEach(it=>{
       todos.push(['BEGIN:VTODO',`UID:coll-${it.id}@tm`,`DTSTAMP:${stamp}`,`SUMMARY:${catEmoji[cat]||''}${esc(it.title)}`,'STATUS:NEEDS-ACTION','END:VTODO'].join('\r\n'));
     });
   });
-
   if(!todos.length){toast('沒有資料可匯出');return;}
-
   const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Personal Task Manager//ZH','CALSCALE:GREGORIAN','METHOD:PUBLISH',...todos,'END:VCALENDAR'].join('\r\n');
   const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
   const url=URL.createObjectURL(blob);
@@ -819,6 +946,31 @@ function renderReviewPage(){
   const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
   document.getElementById('week-label').textContent=
     `${now.getFullYear()} 年 第 ${weekNum(now)} 週（${fmt(mon)} – ${fmt(sun)}）`;
+  loadReviewAnswers();
+}
+
+function loadReviewAnswers(){
+  const rev=cget('pm_review',{});
+  ['rq1','rq2','rq3','rq4'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(el)el.value=rev['q'+(i+1)]||'';
+  });
+  if(rev.generated){
+    document.getElementById('rev-body').textContent=rev.generated;
+    document.getElementById('review-out').style.display='block';
+  }else{
+    document.getElementById('review-out').style.display='none';
+  }
+}
+
+let reviewSaveT;
+function autoSaveReview(){
+  clearTimeout(reviewSaveT);
+  reviewSaveT=setTimeout(()=>{
+    const rev=cget('pm_review',{});
+    ['rq1','rq2','rq3','rq4'].forEach((id,i)=>{rev['q'+(i+1)]=document.getElementById(id)?.value||'';});
+    cset('pm_review',rev);
+  },800);
 }
 
 function genReview(){
@@ -852,11 +1004,13 @@ ${q4||'（未填寫）'}
   document.getElementById('rev-body').textContent=md;
   document.getElementById('review-out').style.display='block';
   document.getElementById('review-out').scrollIntoView({behavior:'smooth'});
+  cset('pm_review',{q1,q2,q3,q4,generated:md,generatedAt:new Date().toISOString()});
 }
 
 function clearReview(){
   ['rq1','rq2','rq3','rq4'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('review-out').style.display='none';
+  cset('pm_review',{});
 }
 
 // ─── Util ──────────────────────────────────────────────────
