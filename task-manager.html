@@ -208,7 +208,7 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
   <div class="flex jb ac mb16">
     <h2 style="margin:0">⚙️ 設定</h2>
     <div class="flex gap8">
-      <button class="btn btn-secondary btn-sm" onclick="exportJSON()">📤 匯出</button>
+      <button class="btn btn-secondary btn-sm" onclick="exportICS()">📤 匯出 ICS</button>
       <button class="btn btn-secondary btn-sm" onclick="document.getElementById('imp-file').click()">📥 匯入</button>
       <input type="file" id="imp-file" style="display:none" accept=".json" onchange="importJSON(event)">
     </div>
@@ -738,16 +738,62 @@ function delHabit(i){
   const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
 }
 
-function exportJSON(){
-  const data={
-    goals:cget('pm_goals',[]),habits:cget('pm_habits',[]),
-    collections:cget('pm_colls',{}),exportedAt:new Date().toISOString()
+function exportICS(){
+  const habits=cget('pm_habits',[]);
+  const goals=cget('pm_goals',[]);
+  const colls=cget('pm_colls',{});
+  const now=new Date();
+  const pad=n=>String(n).padStart(2,'0');
+  const stamp=`${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}T${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const esc=s=>String(s).replace(/\\/g,'\\\\').replace(/,/g,'\\,').replace(/;/g,'\\;').replace(/\n/g,'\\n');
+
+  const freqMap={
+    daily:'RRULE:FREQ=DAILY',
+    weekday:'RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
+    weekend:'RRULE:FREQ=WEEKLY;BYDAY=SA,SU',
+    weekly:'RRULE:FREQ=WEEKLY;BYDAY=MO',
+    '3x':'RRULE:FREQ=WEEKLY;BYDAY=MO,WE,FR'
   };
-  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+
+  const todos=[];
+
+  // 習慣 → 重複提醒
+  habits.forEach(h=>{
+    const lines=['BEGIN:VTODO',`UID:habit-${h.id}@tm`,`DTSTAMP:${stamp}`];
+    if(h.time){
+      const[hr,min]=h.time.split(':');
+      const d=new Date(now);d.setHours(+hr,+min,0,0);
+      const ds=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+      lines.push(`DTSTART:${ds}`,`DUE:${ds}`);
+    }
+    lines.push(`SUMMARY:${esc(h.name)}`,freqMap[h.frequency]||'RRULE:FREQ=DAILY','STATUS:NEEDS-ACTION','END:VTODO');
+    todos.push(lines.join('\r\n'));
+  });
+
+  // 目標 → 含截止日提醒
+  goals.forEach(g=>{
+    const lines=['BEGIN:VTODO',`UID:goal-${g.id}@tm`,`DTSTAMP:${stamp}`,`SUMMARY:🎯 ${esc(g.name)}`,'STATUS:NEEDS-ACTION'];
+    if(g.dueDate)lines.push(`DUE;VALUE=DATE:${g.dueDate.replace(/-/g,'')}`);
+    lines.push('END:VTODO');
+    todos.push(lines.join('\r\n'));
+  });
+
+  // 收集清單 → 未完成項目
+  const catEmoji={book:'📚 ',movie:'🎬 ',shopping:'🛒 ',other:'📌 '};
+  Object.entries(colls).forEach(([cat,items])=>{
+    (items||[]).filter(it=>!it.done).forEach(it=>{
+      todos.push(['BEGIN:VTODO',`UID:coll-${it.id}@tm`,`DTSTAMP:${stamp}`,`SUMMARY:${catEmoji[cat]||''}${esc(it.title)}`,'STATUS:NEEDS-ACTION','END:VTODO'].join('\r\n'));
+    });
+  });
+
+  if(!todos.length){toast('沒有資料可匯出');return;}
+
+  const ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Personal Task Manager//ZH','CALSCALE:GREGORIAN','METHOD:PUBLISH',...todos,'END:VCALENDAR'].join('\r\n');
+  const blob=new Blob([ics],{type:'text/calendar;charset=utf-8'});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement('a');a.href=url;
-  a.download=`task-manager-${todayStr()}.json`;a.click();
-  URL.revokeObjectURL(url);toast('✅ 已匯出');
+  const a=document.createElement('a');a.href=url;a.download=`tasks-${todayStr()}.ics`;a.click();
+  URL.revokeObjectURL(url);
+  toast('✅ 請用 iOS 開啟 .ics 即可匯入提醒事項');
 }
 
 function importJSON(ev){
