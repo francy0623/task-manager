@@ -35,6 +35,7 @@ nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
 input[type=text],input[type=date],input[type=time],input[type=password],select,textarea{
   background:var(--surface2);border:1px solid var(--border);color:var(--text);
   border-radius:var(--r);padding:8px 12px;font-size:13px;width:100%;transition:border-color .2s;font-family:inherit}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238b949e' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
 textarea{resize:vertical;min-height:80px}
 label{font-size:12px;color:var(--text2);display:block;margin-bottom:4px}
@@ -525,6 +526,17 @@ function addManualTask(){
   cset('pm_today',td);inp.value='';renderToday();
 }
 
+function refreshTodayTasks(){
+  const td=cget('pm_today',null);
+  if(!td||td.date!==todayStr())return;
+  const manual=td.tasks.filter(t=>t.manual);
+  const doneIds=new Set(td.tasks.filter(t=>!t.manual&&t.done).map(t=>String(t.id)));
+  const fresh=buildTasks(new Date());
+  fresh.forEach(t=>{if(doneIds.has(String(t.id)))t.done=true;});
+  td.tasks=[...fresh,...manual];
+  cset('pm_today',td);
+}
+
 function delTask(i){
   const td=cget('pm_today',null);
   if(!td||!td.tasks[i]||!td.tasks[i].manual)return;
@@ -853,7 +865,7 @@ function saveHabit(i){
   const habits=cget('pm_habits',[]);
   habits[i]={...habits[i],name,frequency:freq,time};
   cset('pm_habits',habits);
-  const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
+  refreshTodayTasks();
   renderHabits();toast('✅ 已更新');
 }
 
@@ -867,13 +879,13 @@ function addHabit(){
   cset('pm_habits',habits);
   document.getElementById('h-name').value='';document.getElementById('h-time').value='';
   renderHabits();toast('✅ 習慣已新增');
-  const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
+  refreshTodayTasks();
 }
 
 function delHabit(i){
   const habits=cget('pm_habits',[]);habits.splice(i,1);
   cset('pm_habits',habits);renderHabits();toast('已刪除');
-  const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
+  refreshTodayTasks();
 }
 
 function exportICS(){
