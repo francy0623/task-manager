@@ -93,11 +93,15 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.drag-handle{cursor:grab;color:var(--border);padding:0 6px;font-size:18px;flex-shrink:0;user-select:none;touch-action:none;line-height:1}
+.drag-handle:active{cursor:grabbing;color:var(--text2)}
+.sortable-ghost{opacity:.3;background:var(--surface2);border-radius:var(--r)}
 .flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}.jb{justify-content:space-between}.ac{align-items:center}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mt8{margin-top:8px}.mt12{margin-top:12px}
 @media(max-width:540px){.form-row{flex-direction:column}.form-row>*{min-width:100%!important}input[type=text],input[type=date],input[type=time],input[type=password],select,textarea{font-size:16px}}
 </style>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
 <body>
 
@@ -440,17 +444,40 @@ function renderToday(){
       <span style="font-size:12px"><span style="color:var(--success)">${done}</span> / ${total}</span>
     </div>
     <div class="prog-bar"><div class="prog-fill" style="width:${pct}%"></div></div>
+    <div id="task-list">
     ${tasks.map((t,i)=>`
-      <div class="task-item${t.done?' done':''}" id="ti-${i}">
+      <div class="task-item${t.done?' done':''}" data-i="${i}">
+        <span class="drag-handle">⠿</span>
         <input type="checkbox"${t.done?' checked':''} onchange="toggleTask(${i})">
         <div class="task-name">${escHtml(t.name)}${!t.manual?getStreakBadge(streaks,t.id):''}</div>
         ${t.time?`<span class="task-time">${t.time}</span>`:''}
         ${t.manual?`<button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:11px;flex-shrink:0" onclick="delTask(${i})">✕</button>`:''}
       </div>`).join('')}
+    </div>
     <div class="flex gap8 mt8">
       <input type="text" id="manual-in" placeholder="新增臨時任務…" style="flex:1" onkeypress="if(event.key==='Enter')addManualTask()">
       <button class="btn btn-secondary btn-sm" onclick="addManualTask()">＋</button>
     </div>`;
+  initSortable();
+}
+
+function initSortable(){
+  const list=document.getElementById('task-list');
+  if(!list)return;
+  if(list._s)list._s.destroy();
+  list._s=new Sortable(list,{
+    animation:150,
+    handle:'.drag-handle',
+    ghostClass:'sortable-ghost',
+    onEnd(evt){
+      if(evt.oldIndex===evt.newIndex)return;
+      const td=cget('pm_today',null);if(!td)return;
+      const moved=td.tasks.splice(evt.oldIndex,1)[0];
+      td.tasks.splice(evt.newIndex,0,moved);
+      cset('pm_today',td);
+      renderToday();
+    }
+  });
 }
 
 function buildHistDots(hist,today){
