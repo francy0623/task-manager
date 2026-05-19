@@ -788,6 +788,7 @@ function escHtml(s){
 
 // ─── Init ──────────────────────────────────────────────────
 renderToday();
+if(!LS.g('pm_key',''))LS.s('pm_key','AIzaSyAhJWdUI-5C4DkHbZMWUQeChW87A6mR0Ws');
 const k=LS.g('pm_key','');if(k)document.getElementById('key-input').value=k;
 renderColl();
 </script>
