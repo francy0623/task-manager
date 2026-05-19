@@ -82,6 +82,8 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 .flex{display:flex}.gap8{gap:8px}.gap12{gap:12px}.jb{justify-content:space-between}.ac{align-items:center}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mt8{margin-top:8px}.mt12{margin-top:12px}
 @media(max-width:540px){.form-row{flex-direction:column}.form-row>*{min-width:100%!important}}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -270,11 +272,55 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 </div>
 
 <script>
-// ─── Storage ───────────────────────────────────────────────
-const LS={
-  g:(k,d)=>{try{const v=localStorage.getItem(k);return v===null?d:JSON.parse(v)}catch{return d}},
-  s:(k,v)=>localStorage.setItem(k,JSON.stringify(v))
+// ─── Firebase + Storage ────────────────────────────────────
+const firebaseConfig={
+  apiKey:"AIzaSyD66tQKlk0K-WWeNzoUbPJZm4J0ujDZBnc",
+  authDomain:"task-manager-ce9a2.firebaseapp.com",
+  projectId:"task-manager-ce9a2",
+  storageBucket:"task-manager-ce9a2.firebasestorage.app",
+  messagingSenderId:"918516607452",
+  appId:"1:918516607452:web:4728d20fc34153489f4719"
 };
+firebase.initializeApp(firebaseConfig);
+const db=firebase.firestore();
+const COL='taskManager';
+
+const cache={};
+function cget(k,d){return Object.prototype.hasOwnProperty.call(cache,k)?cache[k]:d;}
+function cset(k,v){
+  cache[k]=v;
+  db.collection(COL).doc(k).set({data:v}).catch(e=>console.error('Firestore write:',e));
+}
+
+const SYNC_KEYS=['pm_habits','pm_goals','pm_colls','pm_today'];
+
+async function initDB(){
+  try{
+    const docs=await Promise.all(SYNC_KEYS.map(k=>db.collection(COL).doc(k).get()));
+    docs.forEach((d,i)=>{if(d.exists)cache[SYNC_KEYS[i]]=d.data().data;});
+  }catch(e){
+    console.error('Firestore load:',e);
+    toast('⚠️ 無法連線雲端，資料可能不同步');
+  }
+  renderToday();
+  renderColl();
+
+  // 跨裝置即時同步
+  SYNC_KEYS.forEach(k=>{
+    db.collection(COL).doc(k).onSnapshot(snap=>{
+      if(!snap.exists)return;
+      const fresh=snap.data().data;
+      if(JSON.stringify(cache[k])===JSON.stringify(fresh))return;
+      cache[k]=fresh;
+      const pg=document.querySelector('.page.active');
+      if(!pg)return;
+      const id=pg.id.replace('page-','');
+      if(id==='today'&&(k==='pm_today'||k==='pm_habits'))renderToday();
+      else if(id==='capture'&&k==='pm_colls')renderColl();
+      else if(id==='settings'&&(k==='pm_habits'||k==='pm_goals'))renderSettings();
+    },e=>console.error('onSnapshot:',e));
+  });
+}
 
 // ─── Navigation ────────────────────────────────────────────
 const PAGES=['today','goals','capture','settings','review'];
@@ -322,11 +368,11 @@ function renderToday(){
   document.getElementById('hd-day').textContent='星期'+WD[now.getDay()];
   document.getElementById('banner-weekly').style.display=now.getDay()===0?'flex':'none';
 
-  let td=LS.g('pm_today',null);
+  let td=cget('pm_today',null);
   const ts=todayStr();
   if(!td||td.date!==ts){
     td={date:ts,tasks:buildTasks(now)};
-    LS.s('pm_today',td);
+    cset('pm_today',td);
   }
 
   const card=document.getElementById('today-card');
@@ -352,7 +398,7 @@ function renderToday(){
 }
 
 function buildTasks(date){
-  const habits=LS.g('pm_habits',[]);
+  const habits=cget('pm_habits',[]);
   const tasks=habits
     .filter(h=>habitToday(h,date))
     .map(h=>({id:h.id,name:h.name,time:h.time||'',done:false}));
@@ -377,13 +423,13 @@ function habitToday(h,d){
 }
 
 function toggleTask(i){
-  const td=LS.g('pm_today',null);if(!td)return;
+  const td=cget('pm_today',null);if(!td)return;
   td.tasks[i].done=!td.tasks[i].done;
-  LS.s('pm_today',td);renderToday();
+  cset('pm_today',td);renderToday();
 }
 
 function copyToday(){
-  const td=LS.g('pm_today',null);
+  const td=cget('pm_today',null);
   if(!td||!td.tasks.length){toast('今天沒有任務');return;}
   const now=new Date();
   let txt=`# ${now.getFullYear()}/${now.getMonth()+1}/${now.getDate()} 星期${WD[now.getDay()]}\n\n`;
@@ -559,10 +605,10 @@ function confirmCap(){
   if(!pendCap)return;
   const cat=document.getElementById('cap-cat').value;
   if(cat==='goal'||cat==='habit'){toast('請點擊「加入設定」');return;}
-  const colls=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  const colls=cget('pm_colls',{book:[],movie:[],shopping:[],other:[]});
   if(!colls[cat])colls[cat]=[];
   colls[cat].push({id:Date.now(),title:pendCap.text,done:false});
-  LS.s('pm_colls',colls);
+  cset('pm_colls',colls);
   document.getElementById('cap-in').value='';
   document.getElementById('cap-result').style.display='none';
   pendCap=null;
@@ -574,13 +620,13 @@ function capToSettings(){
   if(!pendCap)return;
   const cat=document.getElementById('cap-cat').value;
   if(cat==='goal'){
-    const goals=LS.g('pm_goals',[]);
+    const goals=cget('pm_goals',[]);
     goals.push({id:Date.now(),name:pendCap.text,dueDate:'',createdAt:new Date().toISOString()});
-    LS.s('pm_goals',goals);toast('✅ 已加入目標設定');
+    cset('pm_goals',goals);toast('✅ 已加入目標設定');
   }else if(cat==='habit'){
-    const habits=LS.g('pm_habits',[]);
+    const habits=cget('pm_habits',[]);
     habits.push({id:Date.now(),name:pendCap.text,frequency:'daily',time:'',createdAt:new Date().toISOString()});
-    LS.s('pm_habits',habits);toast('✅ 已加入習慣設定（請到設定頁完善細節）');
+    cset('pm_habits',habits);toast('✅ 已加入習慣設定（請到設定頁完善細節）');
   }
   document.getElementById('cap-in').value='';
   document.getElementById('cap-result').style.display='none';
@@ -600,7 +646,7 @@ function switchTab(tab){
 }
 
 function renderColl(){
-  const colls=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  const colls=cget('pm_colls',{book:[],movie:[],shopping:[],other:[]});
   const items=(colls[collTab]||[]);
   const card=document.getElementById('coll-card');
   if(!items.length){card.innerHTML='<p style="color:var(--text2);text-align:center;padding:16px">還沒有項目</p>';return;}
@@ -613,22 +659,22 @@ function renderColl(){
 }
 
 function toggleColl(i){
-  const c=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  const c=cget('pm_colls',{book:[],movie:[],shopping:[],other:[]});
   if(c[collTab]&&c[collTab][i])c[collTab][i].done=!c[collTab][i].done;
-  LS.s('pm_colls',c);renderColl();
+  cset('pm_colls',c);renderColl();
 }
 
 function delColl(i){
-  const c=LS.g('pm_colls',{book:[],movie:[],shopping:[],other:[]});
+  const c=cget('pm_colls',{book:[],movie:[],shopping:[],other:[]});
   if(c[collTab])c[collTab].splice(i,1);
-  LS.s('pm_colls',c);renderColl();
+  cset('pm_colls',c);renderColl();
 }
 
 // ─── PAGE 4: Settings ──────────────────────────────────────
 function renderSettings(){renderGoals();renderHabits();}
 
 function renderGoals(){
-  const goals=LS.g('pm_goals',[]);
+  const goals=cget('pm_goals',[]);
   const el=document.getElementById('goals-list');
   if(!goals.length){el.innerHTML='<p style="color:var(--text2);padding:8px 0;font-size:13px">還沒有目標</p>';return;}
   el.innerHTML=goals.map((g,i)=>`
@@ -645,21 +691,21 @@ function addGoal(){
   const name=document.getElementById('g-name').value.trim();
   const date=document.getElementById('g-date').value;
   if(!name){toast('請輸入目標名稱');return;}
-  const goals=LS.g('pm_goals',[]);
+  const goals=cget('pm_goals',[]);
   goals.push({id:Date.now(),name,dueDate:date,createdAt:new Date().toISOString()});
-  LS.s('pm_goals',goals);
+  cset('pm_goals',goals);
   document.getElementById('g-name').value='';document.getElementById('g-date').value='';
   renderGoals();toast('✅ 目標已新增');
 }
 
 function delGoal(i){
-  const goals=LS.g('pm_goals',[]);goals.splice(i,1);LS.s('pm_goals',goals);renderGoals();toast('已刪除');
+  const goals=cget('pm_goals',[]);goals.splice(i,1);cset('pm_goals',goals);renderGoals();toast('已刪除');
 }
 
 const FREQ_LBL={daily:'每天',weekday:'週一到五',weekend:'週末',weekly:'每週一次','3x':'每週三次'};
 
 function renderHabits(){
-  const habits=LS.g('pm_habits',[]);
+  const habits=cget('pm_habits',[]);
   const el=document.getElementById('habits-list');
   if(!habits.length){el.innerHTML='<p style="color:var(--text2);padding:8px 0;font-size:13px">還沒有習慣</p>';return;}
   el.innerHTML=habits.map((h,i)=>`
@@ -677,25 +723,25 @@ function addHabit(){
   const freq=document.getElementById('h-freq').value;
   const time=document.getElementById('h-time').value;
   if(!name){toast('請輸入習慣名稱');return;}
-  const habits=LS.g('pm_habits',[]);
+  const habits=cget('pm_habits',[]);
   habits.push({id:Date.now(),name,frequency:freq,time,createdAt:new Date().toISOString()});
-  LS.s('pm_habits',habits);
+  cset('pm_habits',habits);
   document.getElementById('h-name').value='';document.getElementById('h-time').value='';
   renderHabits();toast('✅ 習慣已新增');
   // Invalidate today's task cache
-  const td=LS.g('pm_today',null);
-  if(td){td.date='';LS.s('pm_today',td);}
+  const td=cget('pm_today',null);
+  if(td){td.date='';cset('pm_today',td);}
 }
 
 function delHabit(i){
-  const habits=LS.g('pm_habits',[]);habits.splice(i,1);LS.s('pm_habits',habits);renderHabits();toast('已刪除');
-  const td=LS.g('pm_today',null);if(td){td.date='';LS.s('pm_today',td);}
+  const habits=cget('pm_habits',[]);habits.splice(i,1);cset('pm_habits',habits);renderHabits();toast('已刪除');
+  const td=cget('pm_today',null);if(td){td.date='';cset('pm_today',td);}
 }
 
 function exportJSON(){
   const data={
-    goals:LS.g('pm_goals',[]),habits:LS.g('pm_habits',[]),
-    collections:LS.g('pm_colls',{}),exportedAt:new Date().toISOString()
+    goals:cget('pm_goals',[]),habits:cget('pm_habits',[]),
+    collections:cget('pm_colls',{}),exportedAt:new Date().toISOString()
   };
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
@@ -710,9 +756,9 @@ function importJSON(ev){
   r.onload=e=>{
     try{
       const d=JSON.parse(e.target.result);
-      if(d.goals)LS.s('pm_goals',d.goals);
-      if(d.habits)LS.s('pm_habits',d.habits);
-      if(d.collections)LS.s('pm_colls',d.collections);
+      if(d.goals)cset('pm_goals',d.goals);
+      if(d.habits)cset('pm_habits',d.habits);
+      if(d.collections)cset('pm_colls',d.collections);
       renderSettings();toast('✅ 資料已匯入');
     }catch{toast('❌ 匯入失敗，格式錯誤');}
   };
@@ -773,8 +819,7 @@ function escHtml(s){
 }
 
 // ─── Init ──────────────────────────────────────────────────
-renderToday();
-renderColl();
+initDB();
 </script>
 </body>
 </html>
