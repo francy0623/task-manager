@@ -122,14 +122,6 @@ h3{font-size:14px;font-weight:600;margin-bottom:8px}
 <div id="page-goals" class="page">
   <h2>🎯 目標拆解</h2>
 
-  <div class="card mb12">
-    <label>Gemini API Key（儲存於本機，不上傳）</label>
-    <div class="flex gap8 mt8">
-      <input type="password" id="key-input" placeholder="AIza…" style="flex:1">
-      <button class="btn btn-primary btn-sm" onclick="saveKey()">儲存</button>
-    </div>
-  </div>
-
   <div class="card mb12" id="goal-form">
     <div class="form-group">
       <label>你想達成的目標</label>
@@ -292,7 +284,7 @@ function showPage(n){
     document.querySelectorAll('nav button')[PAGES.indexOf(p)].classList.toggle('active',p===n);
   });
   if(n==='today')renderToday();
-  if(n==='goals'){const k=LS.g('pm_key','');if(k)document.getElementById('key-input').value=k;}
+
   if(n==='capture')renderColl();
   if(n==='settings')renderSettings();
   if(n==='review')renderReviewPage();
@@ -403,13 +395,7 @@ function copyToday(){
 let chat={goal:'',msgs:[],answers:[],done:false};
 const MAX_Q=4;
 
-function saveKey(){
-  const k=document.getElementById('key-input').value.trim();
-  if(!k){toast('請輸入 API Key');return;}
-  LS.s('pm_key',k);toast('✅ API Key 已儲存');
-}
-
-function getKey(){return LS.g('pm_key','');}
+function getKey(){return 'AIzaSyAhJWdUI-5C4DkHbZMWUQeChW87A6mR0Ws';}
 
 async function callGemini(prompt,sysInst){
   const key=getKey();
@@ -788,8 +774,6 @@ function escHtml(s){
 
 // ─── Init ──────────────────────────────────────────────────
 renderToday();
-if(!LS.g('pm_key',''))LS.s('pm_key','AIzaSyAhJWdUI-5C4DkHbZMWUQeChW87A6mR0Ws');
-const k=LS.g('pm_key','');if(k)document.getElementById('key-input').value=k;
 renderColl();
 </script>
 </body>
